@@ -1,4 +1,6 @@
-.PHONY: build test lint clean dev-server dev-worker
+.PHONY: build test lint check-headers clean dev-server dev-worker setup
+
+GOLANGCI_LINT ?= $(shell command -v golangci-lint 2>/dev/null || printf "%s/bin/golangci-lint" "$$(go env GOPATH)")
 
 # Build all binaries
 build:
@@ -12,7 +14,11 @@ test:
 
 # Run linter
 lint:
-	golangci-lint run
+	$(GOLANGCI_LINT) run
+
+# Check source file headers
+check-headers:
+	go run ./tools/headercheck
 
 # Clean build artifacts
 clean:

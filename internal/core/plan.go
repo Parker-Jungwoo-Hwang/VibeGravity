@@ -1,3 +1,16 @@
+// ============================================================
+// FILE     : internal/core/plan.go
+// PURPOSE  : Defines structured plan records and their task items.
+// LAYER    : domain
+// STATUS   : active
+// ------------------------------------------------------------
+// EXPORTS  : Plan, PlanItem
+// DEPENDS  : encoding/json, time, internal/core/scope.go
+// USED_BY  : internal/store, recall assembler, plan API
+// ------------------------------------------------------------
+// AGENT_NOTE: Active plans get recall priority, so preserve scope and evidence.
+// ============================================================
+
 package core
 
 import (

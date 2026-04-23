@@ -67,3 +67,12 @@
 
 이 문서 세트는 위 페이지의 운영 원칙만 흡수했다.  
 제품 계약의 최종 기준은 이 문서 세트 자체다.
+
+## Open-source safety rule
+
+VibeGravity code must be original to this repo or based only on commercially
+usable permissive patterns. Do not use GPL, AGPL, LGPL, SSPL, Elastic License,
+or related license-family code as a reference for implementation.
+
+For code-bearing work, follow `.agents/skills/source-provenance.md` and include
+a source review block in the handoff.

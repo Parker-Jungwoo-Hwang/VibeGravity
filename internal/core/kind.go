@@ -1,3 +1,16 @@
+// ============================================================
+// FILE     : internal/core/kind.go
+// PURPOSE  : Defines canonical enum-like values for memory, edge, job, and artifact classes.
+// LAYER    : domain
+// STATUS   : active
+// ------------------------------------------------------------
+// EXPORTS  : MemoryKind, EdgeKind, MemoryStatus, JobKind, ArtifactClass
+// DEPENDS  : plans/02_product-contract_and_direction.md, docs/adr-005-artifact-class-timing.md
+// USED_BY  : internal/core records, storage, reasoning/apply contracts
+// ------------------------------------------------------------
+// AGENT_NOTE: Treat value changes as contract changes and update docs/tests.
+// ============================================================
+
 package core
 
 // MemoryKind describes the semantic type of a derived memory.

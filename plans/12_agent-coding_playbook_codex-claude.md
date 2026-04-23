@@ -176,15 +176,26 @@ VibeGravity repo에는 최소 아래 instruction stack이 있어야 한다.
 - skill for plan / implement / verify
 - skill for contract check
 - skill for eval regression
+- skill for code headers
 
-## 17. Why This Works
+## 17. Source File Headers
+
+Go source files use a parseable code header so agents can reconstruct file
+purpose, layer, dependencies, and consumers without opening every file.
+
+Default to `plans/templates/code-header-minimal-go.md`.
+Use `.agents/skills/code-headers.md` whenever a Go file is created, renamed, or
+materially changed.
+Run `make check-headers` before handoff.
+
+## 18. Why This Works
 
 이 방식이 좋은 이유는 context를 나누기 때문이다.  
 항상 필요한 사실은 instruction file로 남기고, 절차는 skill로 늦게 로드하고, bounded work는 subagent로 분리한다.  
 그래서 token 낭비가 줄고, 결과가 더 일관되다.
 
 
-## 18. Research Notes Behind This Playbook
+## 19. Research Notes Behind This Playbook
 
 이 문서의 운영 규칙은 감으로 만든 것이 아니다.  
 공식 Codex 문서의 핵심은 plan-first, `AGENTS.md`, skill, bounded subagent, testing and review다.  

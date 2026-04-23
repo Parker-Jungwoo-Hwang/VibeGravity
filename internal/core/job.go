@@ -1,3 +1,16 @@
+// ============================================================
+// FILE     : internal/core/job.go
+// PURPOSE  : Defines PostgreSQL-backed worker queue job records.
+// LAYER    : domain
+// STATUS   : active
+// ------------------------------------------------------------
+// EXPORTS  : IngestJob
+// DEPENDS  : encoding/json, time, internal/core/kind.go
+// USED_BY  : internal/store, cmd/worker, ingest pipeline
+// ------------------------------------------------------------
+// AGENT_NOTE: Jobs must support retry without duplicate apply side effects.
+// ============================================================
+
 package core
 
 import (

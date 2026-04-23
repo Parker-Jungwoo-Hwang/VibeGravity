@@ -1,3 +1,16 @@
+// ============================================================
+// FILE     : internal/core/document.go
+// PURPOSE  : Defines document and chunk records used by document retrieval.
+// LAYER    : domain
+// STATUS   : active
+// ------------------------------------------------------------
+// EXPORTS  : Document, DocumentChunk
+// DEPENDS  : encoding/json, time
+// USED_BY  : internal/store, internal/core/dto.go, recall and search paths
+// ------------------------------------------------------------
+// AGENT_NOTE: Keep documents separate from derived memories and memory trace.
+// ============================================================
+
 package core
 
 import (

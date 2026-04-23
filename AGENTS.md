@@ -63,6 +63,24 @@ Keep Stage 1 (Extract) and Stage 2 (Resolve) schema-first and structured JSON on
 Do not let free-form reasoning output cross the apply boundary.  
 Apply engine validates before committing — see `05_runtime-contracts`.
 
+## Open-source code policy
+
+VibeGravity is open source.
+Do not reference or closely reproduce code under GPL, AGPL, LGPL, SSPL, or Elastic License families.
+Use only commercially usable permissive patterns such as MIT, BSD, and Apache-2.0 as reference material, and implement anew from principles.
+Do not reproduce function names, file structure, comments, or distinctive implementations from a specific open-source project.
+If generated code may be substantially similar to external open-source code, stop and warn before coding, then offer an alternative design.
+When handing off code, include a source review: estimated source, suspected license, similarity risk, and whether human review is required.
+Treat structured external snippets of 10 or more consecutive lines as similarity risk and rewrite from first principles.
+Use `.agents/skills/source-provenance.md` when adding code inspired by external material.
+
+## Code file headers
+
+All non-generated Go source files must start with the VibeGravity code header.
+Default to the minimal structured header in `plans/templates/code-header-minimal-go.md`.
+Use `.agents/skills/code-headers.md` when creating, renaming, or materially editing Go files.
+Run `make check-headers` before handoff.
+
 ## Read before work
 
 Always read these files before making non-trivial changes:

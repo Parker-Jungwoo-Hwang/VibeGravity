@@ -1,3 +1,16 @@
+// ============================================================
+// FILE     : internal/core/profile.go
+// PURPOSE  : Defines rebuildable static and dynamic profile snapshots.
+// LAYER    : domain
+// STATUS   : active
+// ------------------------------------------------------------
+// EXPORTS  : Profile
+// DEPENDS  : encoding/json, time, internal/core/scope.go
+// USED_BY  : recall assembler, dreaming, storage
+// ------------------------------------------------------------
+// AGENT_NOTE: Profiles must remain rebuildable from raw events, memories, and edges.
+// ============================================================
+
 package core
 
 import (

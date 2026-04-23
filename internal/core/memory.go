@@ -1,3 +1,16 @@
+// ============================================================
+// FILE     : internal/core/memory.go
+// PURPOSE  : Defines derived memory, graph edge, and provenance trace records.
+// LAYER    : domain
+// STATUS   : active
+// ------------------------------------------------------------
+// EXPORTS  : Memory, MemoryEdge, MemoryTrace
+// DEPENDS  : encoding/json, time, internal/core/kind.go, internal/core/scope.go
+// USED_BY  : apply engine, recall, storage, explain-memory path
+// ------------------------------------------------------------
+// AGENT_NOTE: Never blur raw events, derived memories, and memory_trace.
+// ============================================================
+
 package core
 
 import (

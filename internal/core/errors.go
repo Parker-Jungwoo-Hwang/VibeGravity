@@ -1,3 +1,16 @@
+// ============================================================
+// FILE     : internal/core/errors.go
+// PURPOSE  : Defines shared domain errors for service and storage boundaries.
+// LAYER    : domain
+// STATUS   : active
+// ------------------------------------------------------------
+// EXPORTS  : ErrNotFound, ErrDuplicate, ErrInvalidArgument, ErrConflict
+// DEPENDS  : errors
+// USED_BY  : internal/core services, internal/store implementations
+// ------------------------------------------------------------
+// AGENT_NOTE: Prefer these sentinel errors over transport-specific failures.
+// ============================================================
+
 package core
 
 import "errors"

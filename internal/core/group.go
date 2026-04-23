@@ -1,3 +1,16 @@
+// ============================================================
+// FILE     : internal/core/group.go
+// PURPOSE  : Defines group shared memory records and memberships.
+// LAYER    : domain
+// STATUS   : active
+// ------------------------------------------------------------
+// EXPORTS  : MemoryGroup, MemoryGroupMembership
+// DEPENDS  : time
+// USED_BY  : internal/store, scope-aware recall and apply paths
+// ------------------------------------------------------------
+// AGENT_NOTE: group_shared memory requires valid membership before visibility.
+// ============================================================
+
 package core
 
 import "time"

@@ -1,3 +1,16 @@
+// ============================================================
+// FILE     : internal/store/store.go
+// PURPOSE  : Defines persistence interfaces for raw, memory, job, profile, note, plan, document, and group stores.
+// LAYER    : infra
+// STATUS   : active
+// ------------------------------------------------------------
+// EXPORTS  : RawEventStore, MemoryStore, JobStore, ProfileStore, NoteStore, PlanStore, DocumentStore, SessionSummaryStore, GroupStore
+// DEPENDS  : context, internal/core
+// USED_BY  : internal/store/postgres, service implementations
+// ------------------------------------------------------------
+// AGENT_NOTE: Store contracts must preserve idempotency, provenance, and scope separation.
+// ============================================================
+
 // Package store defines storage contracts for VibeGravity persistence.
 package store
 

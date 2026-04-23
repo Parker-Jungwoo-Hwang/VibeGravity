@@ -1,3 +1,16 @@
+// ============================================================
+// FILE     : internal/core/raw_event.go
+// PURPOSE  : Defines immutable ingest records before memory derivation.
+// LAYER    : domain
+// STATUS   : active
+// ------------------------------------------------------------
+// EXPORTS  : RawEvent
+// DEPENDS  : encoding/json, time
+// USED_BY  : ingest hot path, worker jobs, memory_trace
+// ------------------------------------------------------------
+// AGENT_NOTE: Raw events are source records; do not mix derived memory fields into them.
+// ============================================================
+
 package core
 
 import (

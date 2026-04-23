@@ -1,3 +1,16 @@
+// ============================================================
+// FILE     : internal/core/service_test.go
+// PURPOSE  : Verifies the core service interface and domain records compile together.
+// LAYER    : test
+// STATUS   : active
+// ------------------------------------------------------------
+// EXPORTS  : TestVibeGravityService_Baseline, TestDomainTypes_Compile
+// DEPENDS  : internal/core
+// USED_BY  : go test ./...
+// ------------------------------------------------------------
+// AGENT_NOTE: Keep this as a fast contract smoke test for domain changes.
+// ============================================================
+
 package core
 
 import (

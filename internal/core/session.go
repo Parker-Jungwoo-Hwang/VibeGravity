@@ -1,3 +1,16 @@
+// ============================================================
+// FILE     : internal/core/session.go
+// PURPOSE  : Defines rebuildable summaries for session-level memory consolidation.
+// LAYER    : domain
+// STATUS   : active
+// ------------------------------------------------------------
+// EXPORTS  : SessionSummary
+// DEPENDS  : time
+// USED_BY  : dreaming jobs, recall assembler, storage
+// ------------------------------------------------------------
+// AGENT_NOTE: Session summaries are derived artifacts and must keep source IDs.
+// ============================================================
+
 package core
 
 import "time"

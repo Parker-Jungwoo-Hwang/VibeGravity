@@ -1,3 +1,16 @@
+// ============================================================
+// FILE     : internal/core/entity.go
+// PURPOSE  : Defines entity records for users, agents, workspaces, projects, and groups.
+// LAYER    : domain
+// STATUS   : active
+// ------------------------------------------------------------
+// EXPORTS  : Entity
+// DEPENDS  : encoding/json, time
+// USED_BY  : group membership, profile, and scope-aware storage paths
+// ------------------------------------------------------------
+// AGENT_NOTE: Preserve tenant and workspace fields on every persisted entity.
+// ============================================================
+
 package core
 
 import (

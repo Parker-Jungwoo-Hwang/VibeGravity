@@ -1,3 +1,16 @@
+// ============================================================
+// FILE     : internal/core/service.go
+// PURPOSE  : Defines the primary v1 service contract for all runtime surfaces.
+// LAYER    : domain
+// STATUS   : active
+// ------------------------------------------------------------
+// EXPORTS  : VibeGravityService
+// DEPENDS  : context, internal/core/dto.go
+// USED_BY  : HTTP API, MCP, Hermes provider, tests
+// ------------------------------------------------------------
+// AGENT_NOTE: Do not change this interface without updating AGENTS.md and runtime docs.
+// ============================================================
+
 package core
 
 import (

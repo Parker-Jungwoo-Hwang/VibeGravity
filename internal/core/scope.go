@@ -1,3 +1,16 @@
+// ============================================================
+// FILE     : internal/core/scope.go
+// PURPOSE  : Defines explicit visibility scopes for memory artifacts.
+// LAYER    : domain
+// STATUS   : active
+// ------------------------------------------------------------
+// EXPORTS  : MemoryScope
+// DEPENDS  : plans/04_memory-scopes_dreaming_ontology-lite.md
+// USED_BY  : every memory, note, plan, profile, and recall path
+// ------------------------------------------------------------
+// AGENT_NOTE: Scope must never be implicit or nullable in memory writes.
+// ============================================================
+
 package core
 
 // MemoryScope identifies the visibility boundary for a memory artifact.

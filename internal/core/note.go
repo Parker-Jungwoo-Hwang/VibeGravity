@@ -1,3 +1,16 @@
+// ============================================================
+// FILE     : internal/core/note.go
+// PURPOSE  : Defines human-authored note records that can influence recall.
+// LAYER    : domain
+// STATUS   : active
+// ------------------------------------------------------------
+// EXPORTS  : Note
+// DEPENDS  : time, internal/core/scope.go
+// USED_BY  : internal/store, recall assembler, note API
+// ------------------------------------------------------------
+// AGENT_NOTE: Notes are operator intent and must stay distinct from memories.
+// ============================================================
+
 package core
 
 import "time"
