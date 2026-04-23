@@ -25,7 +25,7 @@
 
 - `prefetch()` / `sync_turn()` 중심 구조
 - raw and derived separation
-- FastAPI + worker + Postgres 구조
+- Go HTTP server + worker + Postgres 구조
 - shared memory kernel 정의
 
 ### From Honcho

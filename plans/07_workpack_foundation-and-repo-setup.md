@@ -18,7 +18,7 @@
 
 - monorepo skeleton
 - shared core package
-- FastAPI baseline
+- Go HTTP server baseline
 - worker baseline
 - Postgres migrations baseline
 - config loader
@@ -32,13 +32,14 @@
 
 최소 인터페이스를 먼저 고정한다.
 
-```python
-class VibeGravityService(Protocol):
-    async def prefetch(self, request): ...
-    async def sync_turn(self, request): ...
-    async def add_document(self, request): ...
-    async def search_memories(self, request): ...
-    async def search_documents(self, request): ...
+```go
+type VibeGravityService interface {
+    Prefetch(ctx context.Context, req *PrefetchRequest) (*PrefetchResponse, error)
+    SyncTurn(ctx context.Context, req *SyncTurnRequest) (*SyncTurnResponse, error)
+    AddDocument(ctx context.Context, req *AddDocumentRequest) (*AddDocumentResponse, error)
+    SearchMemories(ctx context.Context, req *SearchMemoriesRequest) (*SearchMemoriesResponse, error)
+    SearchDocuments(ctx context.Context, req *SearchDocumentsRequest) (*SearchDocumentsResponse, error)
+}
 ```
 
 ## 5. Required Decisions
@@ -49,14 +50,14 @@ class VibeGravityService(Protocol):
 - config strategy
 - db migration tool
 - queue strategy using postgres table
-- python version and tooling
+- Go version and tooling
 - code style and test runner
 
 ## 6. Tasks
 
 ### Task A. Repo bootstrap
 
-Python-first monorepo를 만든다.  
+Go-first monorepo를 만든다.  
 packages, migrations, tests, docs 디렉터리를 만든다.
 
 ### Task B. Core contracts

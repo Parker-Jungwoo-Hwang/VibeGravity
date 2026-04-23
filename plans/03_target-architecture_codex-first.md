@@ -6,7 +6,7 @@ VibeGravity의 목표 구조는 아래와 같다.
 
 ```mermaid
 flowchart LR
-    Hermes[Hermes Agent] --> API[FastAPI API]
+    Hermes[Hermes Agent] --> API[Go HTTP API]
     MCPClient[MCP Client] --> MCP[MCP Surface]
     Operator[Operator or Tool] --> API
 
@@ -185,12 +185,19 @@ reasoning backend와 별개로, 나중에 VibeGravity MCP를 쓰는 coding clien
 
 ```text
 vibegravity/
-├─ packages/
-│  ├─ vibe_gravity_core/
-│  ├─ vibe_gravity_server/
-│  ├─ vibe_gravity_mcp/
-│  ├─ hermes_vibe_gravity/
-│  └─ vibe_gravity_cli/
+├─ cmd/
+│  ├─ server/          # HTTP API entrypoint
+│  ├─ worker/          # background worker
+│  └─ cli/             # CLI and doctor command
+├─ internal/
+│  ├─ core/            # VibeGravityService interface and domain
+│  ├─ ingest/          # sync_turn write path
+│  ├─ recall/          # prefetch assembler
+│  ├─ graph/           # memory graph and apply engine
+│  ├─ mcp/             # MCP surface
+│  ├─ hermes/          # Hermes provider adapter
+│  └─ embed/           # local embedding runtime
+├─ pkg/                # reusable library packages
 ├─ migrations/
 ├─ tests/
 ├─ docs/

@@ -158,6 +158,7 @@ Codex stage 2 입력은 아래 묶음으로 만든다.
 ## 8. Apply Engine Contract
 
 Apply engine은 reasoning 결과를 그대로 믿지 않는다.  
+Day 1의 `plans/day-01/codex-reasoning-contract-v0.md`에서는 이를 7개의 validation/apply layer로 잠그고, 여기서는 그 마지막 apply phase를 실행 순서 기준으로 더 잘게 펼친다.  
 항상 아래 순서를 탄다.
 
 1. schema validation

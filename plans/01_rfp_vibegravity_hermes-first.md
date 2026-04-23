@@ -138,7 +138,7 @@ local extractor 의존 구조로 돌아가면 안 된다.
 ### 5.1 Code
 
 - monorepo baseline
-- FastAPI server
+- Go HTTP server
 - worker
 - PostgreSQL schema and migrations
 - core service layer

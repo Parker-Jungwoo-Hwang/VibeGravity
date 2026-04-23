@@ -1,0 +1,15 @@
+DROP TABLE IF EXISTS memory_group_memberships;
+DROP TABLE IF EXISTS document_chunks;
+DROP TABLE IF EXISTS documents;
+DROP TABLE IF EXISTS plan_items;
+DROP TABLE IF EXISTS plans;
+DROP TABLE IF EXISTS notes;
+DROP TABLE IF EXISTS session_summaries;
+DROP TABLE IF EXISTS profiles;
+DROP TABLE IF EXISTS memory_trace;
+DROP TABLE IF EXISTS memory_edges;
+DROP TABLE IF EXISTS memories;
+DROP TABLE IF EXISTS memory_groups;
+DROP TABLE IF EXISTS entities;
+DROP TABLE IF EXISTS ingest_jobs;
+DROP TABLE IF EXISTS raw_events;
