@@ -356,7 +356,7 @@ func (a *Assembler) addProfiles(ctx context.Context, req *core.PrefetchRequest, 
 		{entityID: "workspace:" + req.WorkspaceID, scope: core.MemoryScopeWorkspaceShared},
 	}
 	for _, target := range profileTargets {
-		profile, err := a.profiles.GetProfile(ctx, target.entityID, target.scope)
+		profile, err := a.profiles.GetProfile(ctx, req.TenantID, req.WorkspaceID, target.entityID, target.scope)
 		if errors.Is(err, core.ErrNotFound) {
 			continue
 		}
@@ -406,7 +406,7 @@ func (a *Assembler) addSessionSummary(ctx context.Context, req *core.PrefetchReq
 	if a.summaries == nil {
 		return candidates, nil
 	}
-	summary, err := a.summaries.GetSessionSummary(ctx, req.SessionID)
+	summary, err := a.summaries.GetSessionSummary(ctx, req.TenantID, req.WorkspaceID, req.SessionID)
 	if errors.Is(err, core.ErrNotFound) {
 		return candidates, nil
 	}

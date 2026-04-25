@@ -73,7 +73,7 @@ func (s storeBackedStage2ProfileSource) LoadStage2Profile(ctx context.Context, r
 		targets = append(targets, stage2ProfileTarget{entityID: "workspace:" + req.WorkspaceID, scope: core.MemoryScopeWorkspaceShared})
 	}
 	for _, target := range targets {
-		profile, err := s.profiles.GetProfile(ctx, target.entityID, target.scope)
+		profile, err := s.profiles.GetProfile(ctx, req.TenantID, req.WorkspaceID, target.entityID, target.scope)
 		if errors.Is(err, core.ErrNotFound) {
 			continue
 		}

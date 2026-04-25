@@ -140,7 +140,8 @@ operator-critical inputs visible to MCP clients:
 - `recall_preview`: tenant/workspace plus optional session, actor, query,
   budget, and mode.
 - `correct_memory`: target memory, operator, correction text, idempotency key,
-  and evidence.
+  evidence, and optional visibility inputs (`entity_id`, `visible_group_ids`)
+  for private/group-shared authorization.
 - `view_timeline`: tenant/workspace, actor entity, scopes, time bounds, and
   limit.
 - `explain_memory`: tenant/workspace, memory id, optional actor entity, and
@@ -152,6 +153,12 @@ must stay aligned across MCP, Hermes provider tools, HTTP DTOs, and core
 validation. In particular, `correct_memory`, `view_timeline`, and
 `explain_memory` must not lose tenant/workspace/actor/evidence or visibility
 inputs at the protocol boundary.
+
+This is a DB/protocol correctness slice, not a feature expansion slice. The
+external path is V1-ready only when Hermes-facing clients can preview recall,
+correct a memory, inspect explain/timeline evidence, and observe supersession
+and degraded freshness with the same semantics the PostgreSQL-backed service
+enforces.
 
 `cmd/cli` now exposes the server through:
 

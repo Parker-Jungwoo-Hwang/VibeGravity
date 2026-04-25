@@ -355,6 +355,9 @@ func (s *Service) CorrectMemory(ctx context.Context, req *core.CorrectMemoryRequ
 		if memory == nil || memory.TenantID != req.TenantID || memory.WorkspaceID != req.WorkspaceID {
 			return nil, core.ErrNotFound
 		}
+		if err := validateCorrectionTargetVisible(req, memory); err != nil {
+			return nil, err
+		}
 		return s.applyRecordedCorrection(ctx, req, memory, recorded, time.Now().UTC())
 	}
 	if err != nil && !errors.Is(err, core.ErrNotFound) {
@@ -369,6 +372,9 @@ func (s *Service) CorrectMemory(ctx context.Context, req *core.CorrectMemoryRequ
 	}
 	if memory.TenantID != req.TenantID || memory.WorkspaceID != req.WorkspaceID {
 		return nil, core.ErrNotFound
+	}
+	if err := validateCorrectionTargetVisible(req, memory); err != nil {
+		return nil, err
 	}
 	if memory.Status != core.MemoryStatusActive || !memory.LatestFlag {
 		return nil, fmt.Errorf("%w: correction target memory must be active latest", core.ErrConflict)
@@ -513,6 +519,35 @@ func requireFields(fields map[string]string) error {
 		if strings.TrimSpace(value) == "" {
 			return fmt.Errorf("%w: %s is required", core.ErrInvalidArgument, name)
 		}
+	}
+	return nil
+}
+
+func validateCorrectionTargetVisible(req *core.CorrectMemoryRequest, memory *core.Memory) error {
+	switch memory.Scope {
+	case core.MemoryScopeAgentPrivate:
+		entityID := strings.TrimSpace(req.EntityID)
+		if entityID == "" || entityID != memory.OwnerEntityID {
+			return fmt.Errorf("%w: correction target memory is not visible to entity", core.ErrNotFound)
+		}
+	case core.MemoryScopeGroupShared:
+		if memory.GroupID == nil {
+			return fmt.Errorf("%w: correction target group is missing", core.ErrNotFound)
+		}
+		targetGroupID := strings.TrimSpace(*memory.GroupID)
+		if targetGroupID == "" {
+			return fmt.Errorf("%w: correction target group is missing", core.ErrNotFound)
+		}
+		for _, visibleGroupID := range req.VisibleGroupIDs {
+			if strings.TrimSpace(visibleGroupID) == targetGroupID {
+				return nil
+			}
+		}
+		return fmt.Errorf("%w: correction target memory is not visible to group", core.ErrNotFound)
+	case core.MemoryScopeWorkspaceShared, core.MemoryScopeSessionScratch:
+		return nil
+	default:
+		return fmt.Errorf("%w: correction target memory has unsupported scope", core.ErrInvalidArgument)
 	}
 	return nil
 }

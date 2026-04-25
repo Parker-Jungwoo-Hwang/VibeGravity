@@ -261,13 +261,15 @@ func toolInputSchema(name string) map[string]any {
 		})
 	case "correct_memory":
 		return base([]string{"tenant_id", "workspace_id", "memory_id", "operator_id", "idempotency_key", "correction_text"}, map[string]any{
-			"tenant_id":       stringProp("Tenant identifier."),
-			"workspace_id":    stringProp("Workspace identifier."),
-			"memory_id":       stringProp("Memory being corrected."),
-			"operator_id":     stringProp("Human or operator actor applying the correction."),
-			"idempotency_key": stringProp("Correction idempotency key."),
-			"correction_text": stringProp("Replacement truth or correction instruction."),
-			"evidence_json":   jsonProp("Optional correction evidence."),
+			"tenant_id":         stringProp("Tenant identifier."),
+			"workspace_id":      stringProp("Workspace identifier."),
+			"memory_id":         stringProp("Memory being corrected."),
+			"operator_id":       stringProp("Human or operator actor applying the correction."),
+			"entity_id":         stringProp("Actor used for private memory visibility."),
+			"visible_group_ids": stringArrayProp("Group identifiers visible to the actor."),
+			"idempotency_key":   stringProp("Correction idempotency key."),
+			"correction_text":   stringProp("Replacement truth or correction instruction."),
+			"evidence_json":     jsonProp("Optional correction evidence."),
 		})
 	case "view_timeline":
 		return base([]string{"tenant_id", "workspace_id", "entity_id"}, map[string]any{

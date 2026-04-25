@@ -5,6 +5,13 @@
 이 문서는 core runtime 계약을 고정한다.
 핫패스, worker, apply engine이 서로 무엇을 약속하는지 정의한다.
 
+For the current V1 direction, these runtime contracts serve Hermes Memory,
+powered by VibeGravity. VibeGravity is the agent memory engine behind the
+product; it is not a generic chat app, raw transcript archive, or vector
+database wrapper. Runtime work should therefore prioritize the trust loop:
+recall preview, correction, provenance, supersession, explain/timeline, scope
+separation, and honest degraded recall.
+
 ## 2. API Surface
 
 v1 API는 아래로 시작한다.
@@ -337,12 +344,17 @@ write failure는 계속 retry 가능한 `FailJob` 경로를 탄다.
 Current correction supersession scope:
 
 - `correct_memory` validates tenant, workspace, memory, operator, idempotency key,
-  and correction text.
+  correction text, and target visibility.
 - It first checks whether the same correction idempotency key already exists.
   Exact same-key replays reuse that artifact and may bypass the active/latest
   precheck so the completed supersession can be recognized idempotently.
 - New correction attempts confirm the target memory exists in the same
   tenant/workspace and is active/latest before recording side effects.
+- Correction target visibility matches the explain/search contract:
+  `agent_private` targets require `entity_id == owner_entity_id`, while
+  `group_shared` targets require the memory `group_id` to be included in
+  `visible_group_ids`. Invisible targets return not-found and do not record
+  raw correction or correction-artifact side effects.
 - It writes a `memory_correction` raw event idempotently.
 - It writes a `memory_corrections` artifact for operator visibility.
 - It rejects reused correction idempotency keys whose memory, operator,
@@ -368,6 +380,10 @@ V1 readiness requires this path to be proven through canonical PostgreSQL, not
 only mocked or in-memory stores: correction intake, replacement memory creation,
 mandatory trace, `updates` edge, target supersession, retry idempotency, and
 operator-visible explain/timeline evidence must survive real storage behavior.
+
+Until that live DB/protocol proof exists, new feature breadth is lower priority
+than P0 correction provenance, MCP/Hermes schema correctness, evidence-safe
+replay idempotency, and stop-line guardrails.
 
 ## 9.1 Timeline Contract
 

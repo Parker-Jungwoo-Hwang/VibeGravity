@@ -87,7 +87,7 @@ type JobMetricsStore interface {
 // ProfileStore persists rebuildable profile snapshots.
 type ProfileStore interface {
 	// GetProfile loads a profile snapshot.
-	GetProfile(ctx context.Context, entityID string, scope core.MemoryScope) (*core.Profile, error)
+	GetProfile(ctx context.Context, tenantID string, workspaceID string, entityID string, scope core.MemoryScope) (*core.Profile, error)
 	// UpsertProfile writes a profile snapshot.
 	UpsertProfile(ctx context.Context, profile *core.Profile) error
 }
@@ -127,7 +127,7 @@ type SessionSummaryStore interface {
 	// UpsertSessionSummary writes a session summary.
 	UpsertSessionSummary(ctx context.Context, summary *core.SessionSummary) error
 	// GetSessionSummary loads the current summary for a session.
-	GetSessionSummary(ctx context.Context, sessionID string) (*core.SessionSummary, error)
+	GetSessionSummary(ctx context.Context, tenantID string, workspaceID string, sessionID string) (*core.SessionSummary, error)
 }
 
 // DreamingStore persists and loads background consolidation state.

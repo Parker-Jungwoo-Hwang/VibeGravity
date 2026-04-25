@@ -11,7 +11,8 @@ slice from 2026-04-24. The active V1 contract now includes correction-driven
 supersession: the append-safe correction artifact remains, and the correction
 text is applied as a replacement memory with mandatory trace, an `updates` edge,
 and prior-memory supersession. Any checklist item below that says not to
-supersede or mutate `latest_flag` is scoped to the old intake-only slice.
+supersede or mutate `latest_flag` is scoped to the old intake-only slice. Do
+not use this packet to block the current supersession contract.
 
 ## Parallel-Safe Boundary
 

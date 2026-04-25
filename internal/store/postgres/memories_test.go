@@ -337,6 +337,22 @@ func TestWriteMemoryTracePreservesExistingTraceOnConflict(t *testing.T) {
 	}
 }
 
+func TestUpdateMemoryEdgeKindReplayCheckRunsBeforeFreshValidation(t *testing.T) {
+	t.Parallel()
+
+	source := readPostgresSourceFile(t, "memories.go")
+	updateSource := extractPostgresSourceBetween(t, source, "func (s *Store) createMemoryWithTraceAndUpdateEdge", "func completedUpdateAlreadyApplied")
+
+	replayCheck := strings.Index(updateSource, "completedUpdateAlreadyApplied(ctx, tx, memory, trace, edge)")
+	edgeKindValidation := strings.Index(updateSource, "edge.EdgeKind != core.EdgeKindUpdates")
+	if replayCheck < 0 || edgeKindValidation < 0 {
+		t.Fatalf("update write path must include replay check and edge kind validation, got:\n%s", updateSource)
+	}
+	if edgeKindValidation < replayCheck {
+		t.Fatalf("edge kind validation must run after replay evidence comparison so changed replay edge_kind returns ErrConflict, got:\n%s", updateSource)
+	}
+}
+
 type recordingMemoryExecutor struct {
 	sql  string
 	args []any

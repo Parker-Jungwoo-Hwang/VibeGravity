@@ -41,16 +41,19 @@ func TestAssemblerPrefetch_PrioritizesManualControls(t *testing.T) {
 		Scope:         core.MemoryScopeAgentPrivate,
 		OwnerEntityID: "agent:hermes-main",
 	}}}
+	profiles := &fakeProfileStore{profiles: map[string]*core.Profile{
+		"agent:hermes-main|agent_private": {
+			TenantID:    "tenant_1",
+			WorkspaceID: "workspace_1",
+			EntityID:    "agent:hermes-main",
+			Scope:       core.MemoryScopeAgentPrivate,
+			StaticJSON:  json.RawMessage(`{"style":"brief"}`),
+		},
+	}}
 	assembler := NewAssembler(Dependencies{
-		Notes: notes,
-		Plans: plans,
-		Profiles: &fakeProfileStore{profiles: map[string]*core.Profile{
-			"agent:hermes-main|agent_private": {
-				EntityID:   "agent:hermes-main",
-				Scope:      core.MemoryScopeAgentPrivate,
-				StaticJSON: json.RawMessage(`{"style":"brief"}`),
-			},
-		}},
+		Notes:    notes,
+		Plans:    plans,
+		Profiles: profiles,
 	})
 
 	resp, err := assembler.Prefetch(context.Background(), testPrefetchRequest())
@@ -80,6 +83,9 @@ func TestAssemblerPrefetch_PrioritizesManualControls(t *testing.T) {
 	}
 	if plans.lastReq.OwnerEntityID != "agent:hermes-main" || plans.lastReq.TenantID != "tenant_1" {
 		t.Fatalf("active plans request was not actor scoped: %#v", plans.lastReq)
+	}
+	if got, want := profiles.calls[0], (profileCall{tenantID: "tenant_1", workspaceID: "workspace_1", entityID: "agent:hermes-main", scope: core.MemoryScopeAgentPrivate}); got != want {
+		t.Fatalf("profile request was not tenant/workspace scoped: got %#v want %#v", got, want)
 	}
 }
 
@@ -243,6 +249,96 @@ func TestAssemblerPrefetch_MarksDerivedRecallStaleFromBacklogFreshness(t *testin
 	}
 	if resp.Blocks[1].Kind != "memory" || resp.Blocks[1].Freshness != "stale" {
 		t.Fatalf("derived memory freshness should be stale: %#v", resp.Blocks)
+	}
+}
+
+func TestAssemblerPrefetch_ReturnsStoredContextWhileStale(t *testing.T) {
+	t.Parallel()
+
+	lagSeconds := int64(180)
+	assembler := NewAssembler(Dependencies{
+		Notes: &fakeNoteStore{notes: []*core.Note{{
+			ID:            "note_guardrail",
+			Text:          "Do not enable real Codex by default.",
+			Scope:         core.MemoryScopeWorkspaceShared,
+			OwnerEntityID: "workspace:workspace_1",
+			Pinned:        true,
+		}}},
+		Plans: &fakePlanStore{plans: []*core.Plan{{
+			ID:            "plan_degraded",
+			Title:         "Keep degraded recall useful while worker catches up.",
+			Status:        "active",
+			Scope:         core.MemoryScopeAgentPrivate,
+			OwnerEntityID: "agent:hermes-main",
+		}}},
+		Profiles: &fakeProfileStore{profiles: map[string]*core.Profile{
+			"agent:hermes-main|agent_private": {
+				TenantID:    "tenant_1",
+				WorkspaceID: "workspace_1",
+				EntityID:    "agent:hermes-main",
+				Scope:       core.MemoryScopeAgentPrivate,
+				StaticJSON:  json.RawMessage(`{"operator":"prefers truthful degraded status"}`),
+			},
+		}},
+		Summaries: &fakeSessionSummaryStore{summary: &core.SessionSummary{
+			ID:          "summary_1",
+			TenantID:    "tenant_1",
+			WorkspaceID: "workspace_1",
+			SessionID:   "session_1",
+			SummaryText: "Previous session verified the mocked Codex bridge boundary.",
+		}},
+		Memories: &fakeMemoryStore{resp: &core.SearchMemoriesResponse{
+			Memories: []core.MemoryResult{{
+				MemoryID:      "mem_stored",
+				Text:          "Stored memory remains available during Codex outage.",
+				Scope:         core.MemoryScopeAgentPrivate,
+				OwnerEntityID: "agent:hermes-main",
+				LatestFlag:    true,
+			}},
+		}},
+		Documents: &fakeDocumentStore{resp: &core.SearchDocumentsResponse{
+			Chunks: []core.DocumentChunkResult{{
+				ChunkID:    "chunk_1",
+				DocumentID: "doc_1",
+				Text:       "Runtime contract says degraded mode never returns empty if useful context exists.",
+				Score:      0.9,
+			}},
+		}},
+		Groups: &fakeGroupStore{},
+		Freshness: fakeFreshnessProvider{state: Freshness{
+			Freshness:       "stale",
+			LagSeconds:      &lagSeconds,
+			Reasons:         []string{"worker_backlog_stale"},
+			AffectedSources: []string{"memories", "profile", "session_summaries"},
+		}},
+	})
+
+	resp, err := assembler.Prefetch(context.Background(), testPrefetchRequest())
+	if err != nil {
+		t.Fatalf("Prefetch returned error: %v", err)
+	}
+
+	if len(resp.Blocks) == 0 {
+		t.Fatalf("degraded recall should still return useful stored context")
+	}
+	if !resp.Meta.Degraded || resp.Meta.Freshness != "stale" || resp.Meta.FreshnessLagSeconds == nil || *resp.Meta.FreshnessLagSeconds != lagSeconds {
+		t.Fatalf("expected stale degraded metadata, got %#v", resp.Meta)
+	}
+	for _, wantKind := range []string{"pinned_note", "active_plan", "profile_static", "session_summary", "memory", "document"} {
+		block, ok := findRecallBlock(resp.Blocks, wantKind)
+		if !ok {
+			t.Fatalf("expected degraded recall to include %s in %#v", wantKind, resp.Blocks)
+		}
+		switch wantKind {
+		case "profile_static", "session_summary", "memory":
+			if block.Freshness != "stale" {
+				t.Fatalf("expected derived block %s to be stale, got %#v", wantKind, block)
+			}
+		default:
+			if block.Freshness != "stored" {
+				t.Fatalf("expected non-derived block %s to stay stored, got %#v", wantKind, block)
+			}
+		}
 	}
 }
 
@@ -432,6 +528,15 @@ func containsString(values []string, needle string) bool {
 	return false
 }
 
+func findRecallBlock(blocks []core.RecallBlock, kind string) (core.RecallBlock, bool) {
+	for _, block := range blocks {
+		if block.Kind == kind {
+			return block, true
+		}
+	}
+	return core.RecallBlock{}, false
+}
+
 type fakeNoteStore struct {
 	lastReq *core.ListPinnedNotesRequest
 	notes   []*core.Note
@@ -470,14 +575,23 @@ func (s *fakePlanStore) GetActivePlans(_ context.Context, req *core.GetActivePla
 
 type fakeProfileStore struct {
 	profiles map[string]*core.Profile
+	calls    []profileCall
 }
 
-func (s *fakeProfileStore) GetProfile(_ context.Context, entityID string, scope core.MemoryScope) (*core.Profile, error) {
+func (s *fakeProfileStore) GetProfile(_ context.Context, tenantID string, workspaceID string, entityID string, scope core.MemoryScope) (*core.Profile, error) {
+	s.calls = append(s.calls, profileCall{tenantID: tenantID, workspaceID: workspaceID, entityID: entityID, scope: scope})
 	profile, ok := s.profiles[entityID+"|"+string(scope)]
 	if !ok {
 		return nil, core.ErrNotFound
 	}
 	return profile, nil
+}
+
+type profileCall struct {
+	tenantID    string
+	workspaceID string
+	entityID    string
+	scope       core.MemoryScope
 }
 
 func (s *fakeProfileStore) UpsertProfile(context.Context, *core.Profile) error {
@@ -532,6 +646,44 @@ func (s *fakeGroupStore) ListMemberships(context.Context, string) ([]*core.Memor
 
 func (s *fakeGroupStore) ListMembershipsForEntity(context.Context, string, string, string) ([]*core.MemoryGroupMembership, error) {
 	return s.memberships, nil
+}
+
+type fakeSessionSummaryStore struct {
+	summary *core.SessionSummary
+}
+
+func (s *fakeSessionSummaryStore) UpsertSessionSummary(context.Context, *core.SessionSummary) error {
+	return core.ErrNotImplemented
+}
+
+func (s *fakeSessionSummaryStore) GetSessionSummary(_ context.Context, tenantID string, workspaceID string, sessionID string) (*core.SessionSummary, error) {
+	if s.summary == nil {
+		return nil, core.ErrNotFound
+	}
+	if s.summary.TenantID != tenantID || s.summary.WorkspaceID != workspaceID || s.summary.SessionID != sessionID {
+		return nil, core.ErrNotFound
+	}
+	return s.summary, nil
+}
+
+type fakeDocumentStore struct {
+	resp *core.SearchDocumentsResponse
+}
+
+func (s *fakeDocumentStore) AddDocumentWithChunks(context.Context, *core.Document, []*core.DocumentChunk) error {
+	return core.ErrNotImplemented
+}
+
+func (s *fakeDocumentStore) AddDocument(context.Context, *core.Document) error {
+	return core.ErrNotImplemented
+}
+
+func (s *fakeDocumentStore) AddDocumentChunks(context.Context, []*core.DocumentChunk) error {
+	return core.ErrNotImplemented
+}
+
+func (s *fakeDocumentStore) SearchDocuments(context.Context, *core.SearchDocumentsRequest) (*core.SearchDocumentsResponse, error) {
+	return s.resp, nil
 }
 
 type fakeFreshnessProvider struct {

@@ -57,6 +57,7 @@ supersession transaction, and generated `bin/` binaries are not tracked.
 
 - `docs/review-packets/hermes-memory-trust-loop-product-pivot.md`
 - `docs/review-packets/operator-visible-degraded-recall-freshness.md`
+- `docs/review-packets/gpt-pro-followup-contract-alignment.md`
 - `docs/review-packets/gpt-pro-followup-product-contract-alignment.md`
 
 ## Next Concrete Slice
@@ -66,6 +67,8 @@ new product features.
 
 Goal:
 
+- Treat VibeGravity as the engine for Hermes Memory: an agent memory engine, not
+  a chat app, raw transcript archive, or vector database product.
 - Lock P0 correction provenance: raw correction event, append-safe correction
   artifact, replacement memory, mandatory trace, `updates` edge, and prior
   supersession must remain explainable and idempotent.

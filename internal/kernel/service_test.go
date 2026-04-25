@@ -325,6 +325,101 @@ func TestCorrectMemoryRejectsNonLatestTargetBeforeRecordingCorrection(t *testing
 	}
 }
 
+func TestCorrectMemoryRejectsPrivateTargetWithoutEntityVisibility(t *testing.T) {
+	t.Parallel()
+
+	target := validCorrectionTargetMemory()
+	target.Scope = core.MemoryScopeAgentPrivate
+	target.OwnerEntityID = "agent:hermes-main"
+	corrections := &fakeCorrectionStore{}
+	service := &Service{
+		memories:    &fakeKernelMemoryStore{memory: target},
+		corrections: corrections,
+		jobs:        &fakeCorrectionApplyJobStore{},
+	}
+
+	req := validCorrectionRequest()
+	_, err := service.CorrectMemory(context.Background(), req)
+	if !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("expected private target without entity visibility to be hidden, got %v", err)
+	}
+	if corrections.event != nil || corrections.correction != nil {
+		t.Fatalf("invisible private target must not record correction side effects: event=%#v correction=%#v", corrections.event, corrections.correction)
+	}
+}
+
+func TestCorrectMemoryAllowsPrivateTargetForVisibleOwner(t *testing.T) {
+	t.Parallel()
+
+	target := validCorrectionTargetMemory()
+	target.Scope = core.MemoryScopeAgentPrivate
+	target.OwnerEntityID = "agent:hermes-main"
+	service := &Service{
+		memories:    &fakeKernelMemoryStore{memory: target},
+		corrections: &fakeCorrectionStore{},
+		jobs:        &fakeCorrectionApplyJobStore{},
+	}
+
+	req := validCorrectionRequest()
+	req.EntityID = "agent:hermes-main"
+	resp, err := service.CorrectMemory(context.Background(), req)
+	if err != nil {
+		t.Fatalf("CorrectMemory returned error for visible private target: %v", err)
+	}
+	if resp.Status != "applied" {
+		t.Fatalf("unexpected private correction response: %#v", resp)
+	}
+}
+
+func TestCorrectMemoryRejectsGroupSharedTargetWithoutVisibleGroup(t *testing.T) {
+	t.Parallel()
+
+	groupID := "group_design"
+	target := validCorrectionTargetMemory()
+	target.Scope = core.MemoryScopeGroupShared
+	target.GroupID = &groupID
+	corrections := &fakeCorrectionStore{}
+	service := &Service{
+		memories:    &fakeKernelMemoryStore{memory: target},
+		corrections: corrections,
+		jobs:        &fakeCorrectionApplyJobStore{},
+	}
+
+	req := validCorrectionRequest()
+	req.VisibleGroupIDs = []string{"group_ops"}
+	_, err := service.CorrectMemory(context.Background(), req)
+	if !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("expected group target without visible group to be hidden, got %v", err)
+	}
+	if corrections.event != nil || corrections.correction != nil {
+		t.Fatalf("invisible group target must not record correction side effects: event=%#v correction=%#v", corrections.event, corrections.correction)
+	}
+}
+
+func TestCorrectMemoryAllowsGroupSharedTargetForVisibleGroup(t *testing.T) {
+	t.Parallel()
+
+	groupID := "group_design"
+	target := validCorrectionTargetMemory()
+	target.Scope = core.MemoryScopeGroupShared
+	target.GroupID = &groupID
+	service := &Service{
+		memories:    &fakeKernelMemoryStore{memory: target},
+		corrections: &fakeCorrectionStore{},
+		jobs:        &fakeCorrectionApplyJobStore{},
+	}
+
+	req := validCorrectionRequest()
+	req.VisibleGroupIDs = []string{"group_design"}
+	resp, err := service.CorrectMemory(context.Background(), req)
+	if err != nil {
+		t.Fatalf("CorrectMemory returned error for visible group target: %v", err)
+	}
+	if resp.Status != "applied" {
+		t.Fatalf("unexpected group correction response: %#v", resp)
+	}
+}
+
 func TestCorrectMemoryDoesNotReportSuccessWhenSupersessionFails(t *testing.T) {
 	t.Parallel()
 

@@ -236,13 +236,15 @@ type UpdatePlanResponse struct {
 
 // CorrectMemoryRequest records a human correction for a memory.
 type CorrectMemoryRequest struct {
-	TenantID       string          `json:"tenant_id"`
-	WorkspaceID    string          `json:"workspace_id"`
-	MemoryID       string          `json:"memory_id"`
-	OperatorID     string          `json:"operator_id"`
-	IdempotencyKey string          `json:"idempotency_key"`
-	CorrectionText string          `json:"correction_text"`
-	EvidenceJSON   json.RawMessage `json:"evidence_json"`
+	TenantID        string          `json:"tenant_id"`
+	WorkspaceID     string          `json:"workspace_id"`
+	MemoryID        string          `json:"memory_id"`
+	OperatorID      string          `json:"operator_id"`
+	EntityID        string          `json:"entity_id,omitempty"`
+	VisibleGroupIDs []string        `json:"visible_group_ids,omitempty"`
+	IdempotencyKey  string          `json:"idempotency_key"`
+	CorrectionText  string          `json:"correction_text"`
+	EvidenceJSON    json.RawMessage `json:"evidence_json"`
 }
 
 // CorrectMemoryResponse reports the correction side effects.

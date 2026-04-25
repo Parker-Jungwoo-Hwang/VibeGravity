@@ -684,7 +684,7 @@ func (s *fakeDreamingStore) UpsertSessionSummary(_ context.Context, summary *cor
 	return nil
 }
 
-func (s *fakeDreamingStore) GetSessionSummary(context.Context, string) (*core.SessionSummary, error) {
+func (s *fakeDreamingStore) GetSessionSummary(context.Context, string, string, string) (*core.SessionSummary, error) {
 	return nil, core.ErrNotFound
 }
 

@@ -20,6 +20,8 @@ import (
 
 // Profile is a rebuildable static and dynamic snapshot for an entity.
 type Profile struct {
+	TenantID        string          `json:"tenant_id"`
+	WorkspaceID     string          `json:"workspace_id"`
 	EntityID        string          `json:"entity_id"`
 	Scope           MemoryScope     `json:"scope"`
 	StaticJSON      json.RawMessage `json:"static_json"`

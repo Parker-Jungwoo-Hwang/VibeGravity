@@ -30,9 +30,11 @@ func TestStoreBackedStage2InputPreparer_LoadsContextFromStores(t *testing.T) {
 
 	profileStore := &fakeStage2ProfileStore{profiles: map[string]*core.Profile{
 		"agent:hermes-main|agent_private": {
-			EntityID:   "agent:hermes-main",
-			Scope:      core.MemoryScopeAgentPrivate,
-			StaticJSON: json.RawMessage(`{"style":"brief"}`),
+			TenantID:    "tenant_1",
+			WorkspaceID: "workspace_1",
+			EntityID:    "agent:hermes-main",
+			Scope:       core.MemoryScopeAgentPrivate,
+			StaticJSON:  json.RawMessage(`{"style":"brief"}`),
 		},
 	}}
 	memoryStore := &fakeStage2MemoryStore{resp: &core.SearchMemoriesResponse{Memories: []core.MemoryResult{{
@@ -106,7 +108,7 @@ func TestStoreBackedStage2InputPreparer_LoadsContextFromStores(t *testing.T) {
 		t.Fatalf("expected pinned notes, got %#v", input.PinnedNotes)
 	}
 
-	if got, want := profileStore.calls, []profileCall{{entityID: "agent:hermes-main", scope: core.MemoryScopeAgentPrivate}}; !reflect.DeepEqual(got, want) {
+	if got, want := profileStore.calls, []profileCall{{tenantID: "tenant_1", workspaceID: "workspace_1", entityID: "agent:hermes-main", scope: core.MemoryScopeAgentPrivate}}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("unexpected profile calls: got %#v want %#v", got, want)
 	}
 	wantScopes := []core.MemoryScope{core.MemoryScopeAgentPrivate, core.MemoryScopeWorkspaceShared, core.MemoryScopeSessionScratch}
@@ -278,9 +280,11 @@ func TestStoreBackedStage2InputPreparer_UsesWorkspaceProfileFallback(t *testing.
 
 	profileStore := &fakeStage2ProfileStore{profiles: map[string]*core.Profile{
 		"workspace:workspace_1|workspace_shared": {
-			EntityID:   "workspace:workspace_1",
-			Scope:      core.MemoryScopeWorkspaceShared,
-			StaticJSON: json.RawMessage(`{"project":"VibeGravity"}`),
+			TenantID:    "tenant_1",
+			WorkspaceID: "workspace_1",
+			EntityID:    "workspace:workspace_1",
+			Scope:       core.MemoryScopeWorkspaceShared,
+			StaticJSON:  json.RawMessage(`{"project":"VibeGravity"}`),
 		},
 	}}
 	preparer := NewStoreBackedStage2InputPreparer(Stage2SourceStores{Profiles: profileStore})
@@ -293,8 +297,8 @@ func TestStoreBackedStage2InputPreparer_UsesWorkspaceProfileFallback(t *testing.
 		t.Fatalf("expected workspace profile fallback, got %#v", input.ExistingProfile)
 	}
 	wantCalls := []profileCall{
-		{entityID: "agent:hermes-main", scope: core.MemoryScopeAgentPrivate},
-		{entityID: "workspace:workspace_1", scope: core.MemoryScopeWorkspaceShared},
+		{tenantID: "tenant_1", workspaceID: "workspace_1", entityID: "agent:hermes-main", scope: core.MemoryScopeAgentPrivate},
+		{tenantID: "tenant_1", workspaceID: "workspace_1", entityID: "workspace:workspace_1", scope: core.MemoryScopeWorkspaceShared},
 	}
 	if !reflect.DeepEqual(profileStore.calls, wantCalls) {
 		t.Fatalf("unexpected profile lookup order: got %#v want %#v", profileStore.calls, wantCalls)
@@ -363,8 +367,10 @@ func noteIDs(notes []*core.Note) []string {
 }
 
 type profileCall struct {
-	entityID string
-	scope    core.MemoryScope
+	tenantID    string
+	workspaceID string
+	entityID    string
+	scope       core.MemoryScope
 }
 
 type fakeStage2ProfileStore struct {
@@ -373,8 +379,8 @@ type fakeStage2ProfileStore struct {
 	err      error
 }
 
-func (s *fakeStage2ProfileStore) GetProfile(_ context.Context, entityID string, scope core.MemoryScope) (*core.Profile, error) {
-	s.calls = append(s.calls, profileCall{entityID: entityID, scope: scope})
+func (s *fakeStage2ProfileStore) GetProfile(_ context.Context, tenantID string, workspaceID string, entityID string, scope core.MemoryScope) (*core.Profile, error) {
+	s.calls = append(s.calls, profileCall{tenantID: tenantID, workspaceID: workspaceID, entityID: entityID, scope: scope})
 	if s.err != nil {
 		return nil, s.err
 	}

@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/parker-jungwoo-hwang/vibegravity/internal/core"
+	"github.com/parker-jungwoo-hwang/vibegravity/internal/recall"
 )
 
 func TestSurfaceListsV1Tools(t *testing.T) {
@@ -32,7 +33,7 @@ func TestSurfaceListsV1Tools(t *testing.T) {
 	for _, tool := range tools {
 		names[tool.Name] = true
 	}
-	for _, want := range []string{"prefetch", "recall_preview", "sync_turn", "search_memory", "add_note", "correct_memory", "view_timeline", "explain_memory", "degraded_status"} {
+	for _, want := range []string{"prefetch", "recall_preview", "sync_turn", "search_memory", "search_documents", "add_note", "create_plan", "update_plan", "correct_memory", "view_timeline", "explain_memory", "degraded_status"} {
 		if !names[want] {
 			t.Fatalf("expected tool %q in %#v", want, tools)
 		}
@@ -45,7 +46,7 @@ func TestSurfaceCallsRecallPreviewAlias(t *testing.T) {
 	service := &fakeService{prefetchResp: &core.PrefetchResponse{Blocks: []core.RecallBlock{{Kind: "memory", Priority: 90, Text: "Preview"}}}}
 	surface := newTestSurface(t, service)
 
-	raw, err := surface.Call(context.Background(), "recall_preview", json.RawMessage(`{"tenant_id":"tenant_1","workspace_id":"workspace_1"}`))
+	raw, err := surface.Call(context.Background(), "recall_preview", json.RawMessage(`{"tenant_id":"tenant_1","workspace_id":"workspace_1","session_id":"session_1","actor_id":"agent:hermes-main"}`))
 	if err != nil {
 		t.Fatalf("Call returned error: %v", err)
 	}
@@ -63,7 +64,7 @@ func TestSurfaceCallsPrefetch(t *testing.T) {
 	service := &fakeService{prefetchResp: &core.PrefetchResponse{Blocks: []core.RecallBlock{{Kind: "note", Priority: 100, Text: "Pinned"}}}}
 	surface := newTestSurface(t, service)
 
-	raw, err := surface.Call(context.Background(), "prefetch", json.RawMessage(`{"tenant_id":"tenant_1","workspace_id":"workspace_1"}`))
+	raw, err := surface.Call(context.Background(), "prefetch", json.RawMessage(`{"tenant_id":"tenant_1","workspace_id":"workspace_1","session_id":"session_1","actor_id":"agent:hermes-main"}`))
 	if err != nil {
 		t.Fatalf("Call returned error: %v", err)
 	}
@@ -81,7 +82,7 @@ func TestSurfaceCallsCorrectMemory(t *testing.T) {
 	service := &fakeService{correctResp: &core.CorrectMemoryResponse{MemoryID: "mem_1", CorrectionRecorded: true, Status: "recorded"}}
 	surface := newTestSurface(t, service)
 
-	raw, err := surface.Call(context.Background(), "correct_memory", json.RawMessage(`{"tenant_id":"tenant_1","workspace_id":"workspace_1","memory_id":"mem_1"}`))
+	raw, err := surface.Call(context.Background(), "correct_memory", json.RawMessage(`{"tenant_id":"tenant_1","workspace_id":"workspace_1","memory_id":"mem_1","operator_id":"operator_1","idempotency_key":"idem_1","correction_text":"Use the corrected rule."}`))
 	if err != nil {
 		t.Fatalf("Call returned error: %v", err)
 	}
@@ -150,6 +151,24 @@ func TestSurfaceCallsDegradedStatus(t *testing.T) {
 	}
 	if !strings.Contains(string(raw), `"freshness":"stale"`) || !strings.Contains(string(raw), "worker backlog") {
 		t.Fatalf("expected encoded recall meta, got %s", string(raw))
+	}
+}
+
+func TestSurfaceCallReturnsPredictableServiceValidationError(t *testing.T) {
+	t.Parallel()
+
+	service := &prefetchValidationService{assembler: recall.NewAssembler(recall.Dependencies{})}
+	surface := newTestSurface(t, service)
+
+	_, err := surface.Call(context.Background(), "recall_preview", json.RawMessage(`{"tenant_id":"tenant_1","workspace_id":"workspace_1","session_id":"session_1"}`))
+	if !errors.Is(err, core.ErrInvalidArgument) {
+		t.Fatalf("expected ErrInvalidArgument for incomplete recall_preview, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "actor_id is required") {
+		t.Fatalf("expected predictable actor_id validation error, got %v", err)
+	}
+	if service.prefetchCalls != 1 {
+		t.Fatalf("expected incomplete call to reach service validation once, got %d", service.prefetchCalls)
 	}
 }
 

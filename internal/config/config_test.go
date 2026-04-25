@@ -50,3 +50,21 @@ func TestLoadConfigRequiresExplicitCodexEnablement(t *testing.T) {
 		t.Fatalf("unexpected Codex model: %q", cfg.Codex.Model)
 	}
 }
+
+func TestLoadConfigKeepsCodexDisabledForInvalidEnablement(t *testing.T) {
+	t.Setenv("VIBEGRAVITY_CODEX_ENABLED", "definitely-not-a-bool")
+	t.Setenv("VIBEGRAVITY_CODEX_ENDPOINT", "https://codex.invalid")
+	t.Setenv("VIBEGRAVITY_CODEX_MODEL", "codex-contract-test")
+
+	cfg := LoadConfig()
+
+	if cfg.Codex.Enabled {
+		t.Fatalf("invalid Codex enablement must fall back to disabled")
+	}
+	if cfg.Codex.Endpoint != "https://codex.invalid" {
+		t.Fatalf("Codex endpoint should still load without enabling Codex, got %q", cfg.Codex.Endpoint)
+	}
+	if cfg.Codex.Model != "codex-contract-test" {
+		t.Fatalf("Codex model should still load without enabling Codex, got %q", cfg.Codex.Model)
+	}
+}

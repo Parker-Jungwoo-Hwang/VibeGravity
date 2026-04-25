@@ -90,8 +90,15 @@ VibeGravity는 다음 제품이 아니다.
 - standalone coding agent
 - only-vector memory DB
 - only-chat-log archive
+- raw transcript archive with nicer search
 - giant knowledge graph platform
 - pure note-taking app
+
+The active product frame is narrower and stronger: Hermes Memory is the
+operator-facing product, powered by VibeGravity as the agent memory engine.
+VibeGravity earns its place by turning agent activity into scoped, explainable,
+correctable memory, not by becoming a generic chat surface or generic vector
+store.
 
 ## 5. User-Facing Mental Model
 
@@ -176,6 +183,11 @@ material unless it is explicitly framed as the intake-only predecessor.
 The next slice should favor DB/protocol correctness over new feature breadth:
 P0 correction provenance, MCP schema correctness, evidence-safe replay
 idempotency, live PostgreSQL integration gates, and stop-line protection.
+Document memory should stay supporting context for recall and Stage 2 reasoning.
+Dreaming should stay a maintenance and quality layer. Neither should displace
+the P0 trust-loop proof: correction, provenance, supersession, scope separation,
+explain, timeline, and degraded recall through real PostgreSQL and external
+protocol paths.
 
 ## 9. Product Language
 

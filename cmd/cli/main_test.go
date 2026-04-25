@@ -23,6 +23,30 @@ import (
 	"github.com/parker-jungwoo-hwang/vibegravity/internal/core"
 )
 
+func TestMaskPasswordRedactsURLCredentials(t *testing.T) {
+	t.Parallel()
+
+	got := maskPassword("postgres://vibe:super-secret@localhost:5432/vibegravity?sslmode=disable")
+	if strings.Contains(got, "super-secret") {
+		t.Fatalf("database URL password was not redacted: %s", got)
+	}
+	if !strings.Contains(got, "postgres://vibe:xxxxx@localhost:5432/vibegravity") {
+		t.Fatalf("database URL should preserve non-secret connection shape, got %s", got)
+	}
+}
+
+func TestMaskPasswordRedactsKeywordDSNPassword(t *testing.T) {
+	t.Parallel()
+
+	got := maskPassword("host=localhost user=vibe password=super-secret dbname=vibegravity")
+	if strings.Contains(got, "super-secret") {
+		t.Fatalf("keyword DSN password was not redacted: %s", got)
+	}
+	if !strings.Contains(got, "password=xxxxx") {
+		t.Fatalf("keyword DSN password placeholder missing: %s", got)
+	}
+}
+
 func TestRunCLIListsBlockedJobs(t *testing.T) {
 	t.Parallel()
 
@@ -96,6 +120,9 @@ func TestRunCLIPrintsJobMetrics(t *testing.T) {
 	}
 	if store.metricsReq.DrainWindow != 10*time.Minute || store.metricsReq.TenantID != "tenant_1" || store.metricsReq.WorkspaceID != "workspace_1" {
 		t.Fatalf("unexpected metrics request: %#v", store.metricsReq)
+	}
+	if store.listLimit != 0 || store.requeuedJobID != "" {
+		t.Fatalf("jobs metrics must be read-only, got listLimit=%d requeued=%q", store.listLimit, store.requeuedJobID)
 	}
 	output := out.String()
 	for _, want := range []string{

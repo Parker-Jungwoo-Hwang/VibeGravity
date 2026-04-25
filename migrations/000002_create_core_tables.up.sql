@@ -185,6 +185,8 @@ CREATE INDEX memory_corrections_memory_created_at_idx
     ON memory_corrections (memory_id, created_at DESC);
 
 CREATE TABLE profiles (
+    tenant_id TEXT NOT NULL,
+    workspace_id TEXT NOT NULL,
     entity_id TEXT NOT NULL,
     scope TEXT NOT NULL CHECK (scope IN (
         'agent_private',
@@ -197,11 +199,11 @@ CREATE TABLE profiles (
     source_memory_ids TEXT[] NOT NULL DEFAULT '{}',
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     version BIGINT NOT NULL DEFAULT 1,
-    PRIMARY KEY (entity_id, scope)
+    PRIMARY KEY (tenant_id, workspace_id, entity_id, scope)
 );
 
-CREATE INDEX profiles_entity_updated_at_idx
-    ON profiles (entity_id, updated_at DESC);
+CREATE INDEX profiles_tenant_workspace_entity_updated_at_idx
+    ON profiles (tenant_id, workspace_id, entity_id, updated_at DESC);
 
 CREATE TABLE session_summaries (
     id TEXT PRIMARY KEY,
@@ -214,6 +216,9 @@ CREATE TABLE session_summaries (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE INDEX session_summaries_tenant_workspace_session_updated_at_idx
+    ON session_summaries (tenant_id, workspace_id, session_id, updated_at DESC);
 
 CREATE TABLE notes (
     id TEXT PRIMARY KEY,

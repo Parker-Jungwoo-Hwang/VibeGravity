@@ -94,6 +94,12 @@ func TestServerToolSchemasExposeTrustLoopInputs(t *testing.T) {
 	if _, ok := correctionProps["evidence_json"]; !ok {
 		t.Fatalf("correct_memory schema should expose evidence_json for provenance")
 	}
+	if _, ok := correctionProps["entity_id"]; !ok {
+		t.Fatalf("correct_memory schema should expose entity_id for private visibility")
+	}
+	if _, ok := correctionProps["visible_group_ids"]; !ok {
+		t.Fatalf("correct_memory schema should expose visible_group_ids for group visibility")
+	}
 	timelineProps := byName["view_timeline"].InputSchema["properties"].(map[string]any)
 	if _, ok := timelineProps["scopes"]; !ok {
 		t.Fatalf("view_timeline schema should expose scopes for visibility review")

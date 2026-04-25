@@ -195,6 +195,9 @@ real Codex auth/client behavior, or real Hermes runtime roundtrips.
 
 Prioritize these gates before broadening V1 features:
 
+- Product contract alignment: test and docs should treat Hermes Memory,
+  powered by VibeGravity, as the active frame. VibeGravity remains the agent
+  memory engine, not a generic chat app, raw transcript archive, or vector DB.
 - P0 correction provenance: correction artifact, replacement memory, trace,
   `updates` edge, prior supersession, explain/timeline visibility, and next
   recall suppression.

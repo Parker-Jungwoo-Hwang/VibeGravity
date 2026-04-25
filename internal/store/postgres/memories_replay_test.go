@@ -4,7 +4,7 @@
 // LAYER    : test
 // STATUS   : active
 // ------------------------------------------------------------
-// EXPORTS  : TestPostgresUpdateMemoryReplayRequiresIdenticalEvidence, TestPostgresCreateMemoryReplayRejectsTraceEvidenceOverwrite, TestPostgresReplaySourceContractsRequireFullEvidenceComparison
+// EXPORTS  : TestPostgresUpdateMemoryReplayRequiresIdenticalEvidence, TestPostgresCreateMemoryReplayRejectsTraceEvidenceOverwrite, TestPostgresExtendMemoryReplayRejectsTraceEvidenceOverwrite, TestPostgresReplaySourceContractsRequireFullEvidenceComparison
 // DEPENDS  : context, errors, os, strings, testing, time, internal/core, github.com/jackc/pgx/v5/pgxpool
 // USED_BY  : go test ./internal/store/postgres
 // ------------------------------------------------------------
@@ -161,6 +161,62 @@ func TestPostgresCreateMemoryReplayRejectsTraceEvidenceOverwrite(t *testing.T) {
 	err = store.CreateMemoryWithTrace(ctx, memory, changedTrace)
 	if !errors.Is(err, core.ErrConflict) {
 		t.Fatalf("changed create replay trace evidence must return ErrConflict, got %v", err)
+	}
+}
+
+func TestPostgresExtendMemoryReplayRejectsTraceEvidenceOverwrite(t *testing.T) {
+	dbURL := os.Getenv("VIBEGRAVITY_DB_URL")
+	if dbURL == "" {
+		t.Skip("Skipping Postgres replay integration test because VIBEGRAVITY_DB_URL is not set")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	pool, err := pgxpool.New(ctx, dbURL)
+	if err != nil {
+		t.Fatalf("connect test database: %v", err)
+	}
+	defer pool.Close()
+
+	store := NewStore(pool)
+	tenantID := fmt.Sprintf("tenant_replay_extend_%d", time.Now().UnixNano())
+	workspaceID := replayWorkspaceID
+	ownerID := replayOwnerID
+	memoryID := "mem_replay_extend"
+	targetID := "mem_replay_extend_target"
+	reasoningJobID := "job_replay_extend"
+	createdAt := time.Now().UTC()
+
+	cleanupPostgresReplayRows(ctx, t, pool, tenantID)
+	defer cleanupPostgresReplayRows(context.Background(), t, pool, tenantID)
+
+	mustSeedJob(ctx, t, pool, tenantID, workspaceID, "job_replay_seed")
+	mustSeedJob(ctx, t, pool, tenantID, workspaceID, reasoningJobID)
+	seedReplayTargetMemory(ctx, t, store, tenantID, workspaceID, ownerID, targetID, createdAt)
+
+	memory := replayMemory(tenantID, memoryID, "Extend retry keeps its original trace evidence.", "fp_replay_extend", createdAt)
+	trace := replayTrace(memoryID, reasoningJobID, []string{"evt_extend_1"}, `[{"operation_id":"op_extend","kind":"extend_memory"}]`, createdAt)
+	edge := &core.MemoryEdge{
+		FromMemoryID:   memoryID,
+		ToMemoryID:     targetID,
+		EdgeKind:       core.EdgeKindExtends,
+		Confidence:     0.88,
+		CreatedByJobID: reasoningJobID,
+		CreatedAt:      createdAt,
+	}
+
+	if err := store.CreateMemoryWithTraceAndEdge(ctx, memory, trace, edge); err != nil {
+		t.Fatalf("initial extend apply failed: %v", err)
+	}
+	if err := store.CreateMemoryWithTraceAndEdge(ctx, memory, trace, edge); err != nil {
+		t.Fatalf("identical extend replay should be idempotent success: %v", err)
+	}
+
+	changedTrace := replayTrace(memoryID, reasoningJobID, []string{"evt_extend_2"}, `[{"operation_id":"op_extend","kind":"extend_memory","memory":{"text":"changed"}}]`, createdAt)
+	err = store.CreateMemoryWithTraceAndEdge(ctx, memory, changedTrace, edge)
+	if !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("changed extend replay trace evidence must return ErrConflict, got %v", err)
 	}
 }
 

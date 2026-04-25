@@ -144,6 +144,6 @@ func (s *fakeGraphDreamingStore) UpsertSessionSummary(_ context.Context, summary
 	return nil
 }
 
-func (s *fakeGraphDreamingStore) GetSessionSummary(context.Context, string) (*core.SessionSummary, error) {
+func (s *fakeGraphDreamingStore) GetSessionSummary(context.Context, string, string, string) (*core.SessionSummary, error) {
 	return nil, core.ErrNotFound
 }

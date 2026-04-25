@@ -41,23 +41,29 @@ tool set has a discoverable MCP schema.
 
 ## Tests run
 
-- `go test ./internal/mcp` - passed.
-- `go test ./internal/hermes` - passed.
-- `go test ./...` - passed.
-- `make check-headers` - passed.
-- `git diff --check` - passed.
-- `make lint` - blocked by active `codex-agent4-replay-idempotency` changes in
-  `internal/store/postgres/memories_replay_test.go`:
-  `replayUpdateMemory`, `replayUpdateEdge`, and `cleanupPostgresReplayRows`
-  currently trigger `unparam`.
+- 2026-04-25 recheck: `go test ./internal/mcp` - passed.
+- 2026-04-25 recheck: `go test ./internal/mcp -count=1` - passed.
+- 2026-04-25 recheck: `go test ./internal/hermes` - passed.
+- 2026-04-25 recheck: `go test ./...` - passed.
+- 2026-04-25 recheck: `make lint` - passed.
+- 2026-04-25 recheck: `make check-headers` - passed.
+- 2026-04-25 recheck: `git diff --check` - passed.
+- 2026-04-25 recheck: surface smoke payloads now use schema-complete
+  `prefetch`, `recall_preview`, and `correct_memory` arguments, and the
+  surface has a predictable incomplete `recall_preview` validation test for
+  missing `actor_id`.
+- 2026-04-25 recheck: direct `go run ./cmd/cli mcp serve --stdio`
+  `tools/list` probe was blocked because the CLI opens the real service and
+  local PostgreSQL was not listening on `127.0.0.1:5432`; in-process protocol
+  tests verified the same `tools/list` handler without requiring a database.
 
 ## Remaining risks
 
 - MCP schemas are still hand-maintained next to DTO/service validation.
 - JSON schema validation is discovery-only here; service validation remains the
   enforcement point.
-- Full lint should be rerun after the replay-idempotency lane resolves its
-  active test helper findings.
+- The DB-opening CLI probe for `tools/list` still needs a live PostgreSQL
+  service or a CLI test harness that can inject an in-memory service.
 
 ## Source Review
 

@@ -109,6 +109,42 @@ func TestMigrationContractAddsAppendSafeMemoryCorrections(t *testing.T) {
 	}
 }
 
+func TestMigrationContractScopesProfilesAndSessionSummaries(t *testing.T) {
+	t.Parallel()
+
+	sql := readRepoFile(t, "migrations", "000002_create_core_tables.up.sql")
+	profilesSQL := extractBetween(t, sql, "CREATE TABLE profiles", ");")
+	profileIndexSQL := extractBetween(t, sql, "CREATE INDEX profiles_tenant_workspace_entity_updated_at_idx", ";")
+	summaryIndexSQL := extractBetween(t, sql, "CREATE INDEX session_summaries_tenant_workspace_session_updated_at_idx", ";")
+	followUpSQL := readRepoFile(t, "migrations", "000005_scope_profiles_and_summaries.up.sql")
+
+	for _, want := range []string{
+		"tenant_id TEXT NOT NULL",
+		"workspace_id TEXT NOT NULL",
+		"PRIMARY KEY (tenant_id, workspace_id, entity_id, scope)",
+	} {
+		if !strings.Contains(profilesSQL, want) {
+			t.Fatalf("profiles migration must preserve %q, got:\n%s", want, profilesSQL)
+		}
+	}
+	if !strings.Contains(profileIndexSQL, "ON profiles (tenant_id, workspace_id, entity_id, updated_at DESC)") {
+		t.Fatalf("profile lookup index must be tenant/workspace scoped, got:\n%s", profileIndexSQL)
+	}
+	if !strings.Contains(summaryIndexSQL, "ON session_summaries (tenant_id, workspace_id, session_id, updated_at DESC)") {
+		t.Fatalf("session summary lookup index must be tenant/workspace scoped, got:\n%s", summaryIndexSQL)
+	}
+	for _, want := range []string{
+		"ADD COLUMN IF NOT EXISTS tenant_id",
+		"ADD COLUMN IF NOT EXISTS workspace_id",
+		"ADD PRIMARY KEY (tenant_id, workspace_id, entity_id, scope)",
+		"session_summaries_tenant_workspace_session_updated_at_idx",
+	} {
+		if !strings.Contains(followUpSQL, want) {
+			t.Fatalf("follow-up migration must preserve %q for existing DBs, got:\n%s", want, followUpSQL)
+		}
+	}
+}
+
 func readRepoFile(t *testing.T, parts ...string) string {
 	t.Helper()
 

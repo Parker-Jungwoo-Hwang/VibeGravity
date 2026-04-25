@@ -250,6 +250,44 @@ func TestStoreBackedApplyEngine_RejectsUnsupportedWrites(t *testing.T) {
 	}
 }
 
+func TestStoreBackedApplyEngine_RejectsGroupSharedWritesForAllWriteKinds(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		operation reasoning.GraphOperation
+	}{
+		{name: "create", operation: validCreateOperation()},
+		{name: "extend", operation: validExtendOperation()},
+		{name: "update", operation: validUpdateOperation()},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			memories := &fakeMemoryTraceCreator{}
+			engine := newTestStoreBackedApplyEngine(t, memories)
+			req := validApplyRequest(asGroupSharedOperation(tt.operation))
+
+			_, err := engine.Apply(context.Background(), req)
+			if err == nil {
+				t.Fatalf("expected group_shared %s write to be rejected", tt.name)
+			}
+			if !errors.Is(err, core.ErrNotImplemented) {
+				t.Fatalf("expected ErrNotImplemented until membership validation exists, got %v", err)
+			}
+			if !strings.Contains(err.Error(), "membership validation") {
+				t.Fatalf("expected membership validation stop-line error, got %v", err)
+			}
+			if len(memories.memories) != 0 || len(memories.traces) != 0 || len(memories.edges) != 0 ||
+				len(memories.updateMemories) != 0 || len(memories.updateTraces) != 0 || len(memories.updateEdges) != 0 {
+				t.Fatalf("group_shared rejection must happen before storage writes: %#v", memories)
+			}
+		})
+	}
+}
+
 func TestStoreBackedApplyEngine_TraceFailureDoesNotReportSuccessfulApply(t *testing.T) {
 	t.Parallel()
 
@@ -308,6 +346,13 @@ func TestStoreBackedApplyEngine_UpdateFailureDoesNotReportSuccessfulApply(t *tes
 	if len(memories.updateMemories) != 0 || len(memories.updateTraces) != 0 || len(memories.updateEdges) != 0 {
 		t.Fatalf("fake atomic store should record no successful update writes: memories=%d traces=%d edges=%d", len(memories.updateMemories), len(memories.updateTraces), len(memories.updateEdges))
 	}
+}
+
+func asGroupSharedOperation(operation reasoning.GraphOperation) reasoning.GraphOperation {
+	groupID := "group_design"
+	operation.Memory.Scope = core.MemoryScopeGroupShared
+	operation.Memory.GroupID = &groupID
+	return operation
 }
 
 var fixedApplyTime = time.Date(2026, 4, 24, 12, 0, 0, 0, time.UTC)

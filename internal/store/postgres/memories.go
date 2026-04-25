@@ -143,9 +143,6 @@ func (s *Store) createMemoryWithTraceAndUpdateEdge(ctx context.Context, memory *
 	if memory.ID == "" {
 		return fmt.Errorf("%w: update memory id is required", core.ErrInvalidArgument)
 	}
-	if edge.EdgeKind != core.EdgeKindUpdates {
-		return fmt.Errorf("%w: memory edge kind must be updates", core.ErrInvalidArgument)
-	}
 	if edge.ToMemoryID == "" {
 		return fmt.Errorf("%w: update target memory id is required", core.ErrInvalidArgument)
 	}
@@ -178,6 +175,9 @@ func (s *Store) createMemoryWithTraceAndUpdateEdge(ctx context.Context, memory *
 			return fmt.Errorf("commit idempotent memory update transaction: %w", err)
 		}
 		return nil
+	}
+	if edge.EdgeKind != core.EdgeKindUpdates {
+		return fmt.Errorf("%w: memory edge kind must be updates", core.ErrInvalidArgument)
 	}
 
 	target, err := lockLatestMemoryTarget(ctx, tx, memory, edge.ToMemoryID)

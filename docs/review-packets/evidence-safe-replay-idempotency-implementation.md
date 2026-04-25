@@ -48,6 +48,11 @@ JSON comparison is canonicalized before comparison, so formatting-only JSON
 differences do not create conflicts. Array order remains significant for raw
 event IDs, related document IDs, and applied operations.
 
+The `update_memory` write path now lets the deterministic replay comparison run
+before the fresh-write `edge_kind = updates` validation. That keeps a brand-new
+non-`updates` update operation invalid, while a same-memory replay attempt with
+a changed edge kind is classified as an idempotency conflict.
+
 ## Files changed
 
 - `internal/store/postgres/memories.go`

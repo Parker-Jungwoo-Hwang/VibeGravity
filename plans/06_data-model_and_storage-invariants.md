@@ -137,6 +137,8 @@ materialized facts가 아니라 current view다.
 
 필드 예시:
 
+- tenant_id
+- workspace_id
 - entity_id
 - scope
 - static_json
@@ -187,6 +189,11 @@ plan 기본 필드:
 ## 11. `documents` and `document_chunks`
 
 문서와 기억은 저장 층부터 분리한다.
+
+Document memory is supporting context for recall, search, and Stage 2 reasoning.
+It is not the V1 product promise. V1 readiness still depends on correction,
+provenance, supersession, scope separation, explain/timeline, degraded recall,
+and protocol correctness against PostgreSQL.
 
 documents:
 
@@ -278,6 +285,10 @@ tables carry a group identifier.
 ### Invariant E. profile is rebuildable
 
 profile은 raw + memories + edges에서 재생성 가능해야 한다.
+Profile lookup is tenant/workspace scoped: `(tenant_id, workspace_id, entity_id,
+scope)` is the identity boundary for stored snapshots. Session summary recall is
+also tenant/workspace/session scoped; `session_id` alone is never enough in a
+shared PostgreSQL store.
 
 ## 13. Suggested Indexes
 
@@ -291,7 +302,8 @@ profile은 raw + memories + edges에서 재생성 가능해야 한다.
 - `memory_edges(to_memory_id, edge_kind)`
 - `memory_corrections(tenant_id, workspace_id, idempotency_key unique)`
 - `memory_corrections(memory_id, created_at desc)`
-- `profiles(entity_id, updated_at desc)`
+- `profiles(tenant_id, workspace_id, entity_id, updated_at desc)`
+- `session_summaries(tenant_id, workspace_id, session_id, updated_at desc)`
 - `notes(workspace_id, pinned, expires_at)`
 - `plans(workspace_id, status)`
 - `document_chunks(document_id, chunk_index)`

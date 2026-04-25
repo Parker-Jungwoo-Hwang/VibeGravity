@@ -5,7 +5,7 @@
 // STATUS   : active
 // ------------------------------------------------------------
 // EXPORTS  : main
-// DEPENDS  : context, errors, fmt, io, net/http, os, strconv, strings, time, internal/config, internal/core, internal/db, internal/eval, internal/mcp, internal/store/postgres
+// DEPENDS  : context, errors, fmt, io, net/http, net/url, os, strconv, strings, time, internal/config, internal/core, internal/db, internal/eval, internal/mcp, internal/store/postgres
 // USED_BY  : Makefile, local operators
 // ------------------------------------------------------------
 // AGENT_NOTE: Keep operator recovery explicit; blocked jobs must not requeue without a CLI action.
@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -636,9 +637,47 @@ func runDoctor() {
 	fmt.Println("\nDoctor check completed.")
 }
 
-func maskPassword(url string) string {
-	// A simple masker for display purposes, could be improved.
-	// We'll just print it for now if we assume local dev,
-	// but ideally we'd parse the URL and mask the password part.
-	return url
+func maskPassword(raw string) string {
+	if masked, ok := maskKeywordPassword(raw); ok {
+		return masked
+	}
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		return raw
+	}
+	changed := false
+	if parsed.User != nil {
+		if _, ok := parsed.User.Password(); ok {
+			parsed.User = url.UserPassword(parsed.User.Username(), "xxxxx")
+			changed = true
+		}
+	}
+	query := parsed.Query()
+	if _, ok := query["password"]; ok {
+		query.Set("password", "xxxxx")
+		parsed.RawQuery = query.Encode()
+		changed = true
+	}
+	if !changed {
+		return raw
+	}
+	return parsed.String()
+}
+
+func maskKeywordPassword(raw string) (string, bool) {
+	fields := strings.Fields(raw)
+	if len(fields) == 0 {
+		return raw, false
+	}
+	changed := false
+	for i, field := range fields {
+		if strings.HasPrefix(strings.ToLower(field), "password=") {
+			fields[i] = "password=xxxxx"
+			changed = true
+		}
+	}
+	if !changed {
+		return raw, false
+	}
+	return strings.Join(fields, " "), true
 }

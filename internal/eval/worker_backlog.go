@@ -546,7 +546,7 @@ func (workerBacklogDreamingStore) UpsertSessionSummary(context.Context, *core.Se
 	return nil
 }
 
-func (workerBacklogDreamingStore) GetSessionSummary(context.Context, string) (*core.SessionSummary, error) {
+func (workerBacklogDreamingStore) GetSessionSummary(context.Context, string, string, string) (*core.SessionSummary, error) {
 	return nil, core.ErrNotFound
 }
 

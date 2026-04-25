@@ -326,10 +326,18 @@ func (s planFixtureStore) GetActivePlans(_ context.Context, req *core.GetActiveP
 
 type profileFixtureStore []core.Profile
 
-func (s profileFixtureStore) GetProfile(_ context.Context, entityID string, scope core.MemoryScope) (*core.Profile, error) {
+func (s profileFixtureStore) GetProfile(_ context.Context, tenantID string, workspaceID string, entityID string, scope core.MemoryScope) (*core.Profile, error) {
 	for i := range s {
 		profile := s[i]
-		if profile.EntityID == entityID && profile.Scope == scope {
+		profileTenantID := profile.TenantID
+		if profileTenantID == "" {
+			profileTenantID = tenantID
+		}
+		profileWorkspaceID := profile.WorkspaceID
+		if profileWorkspaceID == "" {
+			profileWorkspaceID = workspaceID
+		}
+		if profileTenantID == tenantID && profileWorkspaceID == workspaceID && profile.EntityID == entityID && profile.Scope == scope {
 			return &profile, nil
 		}
 	}
@@ -346,10 +354,10 @@ func (s summaryFixtureStore) UpsertSessionSummary(context.Context, *core.Session
 	return core.ErrNotImplemented
 }
 
-func (s summaryFixtureStore) GetSessionSummary(_ context.Context, sessionID string) (*core.SessionSummary, error) {
+func (s summaryFixtureStore) GetSessionSummary(_ context.Context, tenantID string, workspaceID string, sessionID string) (*core.SessionSummary, error) {
 	for i := range s {
 		summary := s[i]
-		if summary.SessionID == sessionID {
+		if summary.TenantID == tenantID && summary.WorkspaceID == workspaceID && summary.SessionID == sessionID {
 			return &summary, nil
 		}
 	}
