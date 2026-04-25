@@ -28,6 +28,7 @@ CREATE TABLE ingest_jobs (
         'dream_session',
         'dream_workspace',
         'rebuild_profile',
+        'correction_apply',
         'maintenance'
     )),
     status TEXT NOT NULL DEFAULT 'queued',
@@ -143,7 +144,7 @@ CREATE INDEX memory_edges_from_memory_edge_kind_idx
 CREATE INDEX memory_edges_to_memory_edge_kind_idx
     ON memory_edges (to_memory_id, edge_kind);
 CREATE UNIQUE INDEX memory_edges_single_updates_target_idx
-    ON memory_edges (from_memory_id)
+    ON memory_edges (to_memory_id)
     WHERE edge_kind = 'updates';
 
 CREATE TABLE memory_trace (
@@ -157,6 +158,31 @@ CREATE TABLE memory_trace (
     related_document_ids TEXT[] NOT NULL DEFAULT '{}',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE TABLE memory_corrections (
+    id TEXT PRIMARY KEY,
+    tenant_id TEXT NOT NULL,
+    workspace_id TEXT NOT NULL,
+    memory_id TEXT NOT NULL REFERENCES memories (id) ON DELETE CASCADE,
+    operator_id TEXT NOT NULL,
+    raw_event_id TEXT NOT NULL REFERENCES raw_events (id) ON DELETE CASCADE,
+    idempotency_key TEXT NOT NULL,
+    correction_text TEXT NOT NULL,
+    evidence_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+    status TEXT NOT NULL DEFAULT 'recorded' CHECK (status IN (
+        'recorded',
+        'applied',
+        'dismissed'
+    )),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX memory_corrections_tenant_workspace_idempotency_key_idx
+    ON memory_corrections (tenant_id, workspace_id, idempotency_key);
+CREATE UNIQUE INDEX memory_corrections_raw_event_id_idx
+    ON memory_corrections (raw_event_id);
+CREATE INDEX memory_corrections_memory_created_at_idx
+    ON memory_corrections (memory_id, created_at DESC);
 
 CREATE TABLE profiles (
     entity_id TEXT NOT NULL,

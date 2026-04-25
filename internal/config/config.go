@@ -4,7 +4,7 @@
 // LAYER    : infra
 // STATUS   : active
 // ------------------------------------------------------------
-// EXPORTS  : Config, LoadConfig
+// EXPORTS  : Config, LoadConfig, CodexConfig
 // DEPENDS  : github.com/joho/godotenv, os, strconv
 // USED_BY  : cmd/server, cmd/worker, cmd/cli, tests
 // ------------------------------------------------------------
@@ -22,6 +22,13 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// CodexConfig contains disabled-by-default reasoning bridge settings.
+type CodexConfig struct {
+	Enabled  bool
+	Endpoint string
+	Model    string
+}
+
 // Config contains settings shared by the server, worker, and CLI.
 type Config struct {
 	DatabaseURL       string
@@ -29,6 +36,7 @@ type Config struct {
 	EmbeddingEndpoint string
 	EmbeddingModel    string
 	EmbeddingDims     int
+	Codex             CodexConfig
 }
 
 // LoadConfig loads configuration from .env and environment variables.
@@ -42,6 +50,11 @@ func LoadConfig() Config {
 		EmbeddingEndpoint: getEnv("VIBEGRAVITY_EMBEDDING_ENDPOINT", "http://localhost:8080"),
 		EmbeddingModel:    getEnv("VIBEGRAVITY_EMBEDDING_MODEL", "pending"),
 		EmbeddingDims:     getEnvAsInt("VIBEGRAVITY_EMBEDDING_DIMS", 0),
+		Codex: CodexConfig{
+			Enabled:  getEnvAsBool("VIBEGRAVITY_CODEX_ENABLED", false),
+			Endpoint: getEnv("VIBEGRAVITY_CODEX_ENDPOINT", ""),
+			Model:    getEnv("VIBEGRAVITY_CODEX_MODEL", ""),
+		},
 	}
 	return cfg
 }
@@ -61,6 +74,19 @@ func getEnvAsInt(key string, defaultVal int) int {
 	val, err := strconv.Atoi(valStr)
 	if err != nil {
 		log.Printf("Warning: invalid integer for %s: %s", key, valStr)
+		return defaultVal
+	}
+	return val
+}
+
+func getEnvAsBool(key string, defaultVal bool) bool {
+	valStr := getEnv(key, "")
+	if valStr == "" {
+		return defaultVal
+	}
+	val, err := strconv.ParseBool(valStr)
+	if err != nil {
+		log.Printf("Warning: invalid boolean for %s: %s", key, valStr)
 		return defaultVal
 	}
 	return val

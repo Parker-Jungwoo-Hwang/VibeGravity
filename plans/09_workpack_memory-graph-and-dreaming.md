@@ -2,7 +2,7 @@
 
 ## 1. Goal
 
-이 work pack의 목표는 VibeGravity를 진짜 memory system으로 만드는 것이다.  
+이 work pack의 목표는 VibeGravity를 진짜 memory system으로 만드는 것이다.
 여기서 graph, profile, dreaming이 살아난다.
 
 ## 2. Deliverables
@@ -41,6 +41,14 @@ static과 dynamic을 분리한 snapshot을 만든다.
 - dream_workspace
 - memory promotion
 - stale dynamic suppression
+
+Current implemented slice:
+
+- worker dispatches `dream_session` and `dream_workspace` jobs.
+- `dream_session` writes a `session_summaries` row from raw-event and trace-linked memory inputs.
+- `dream_session` promotes session-linked derived memories to `mid-term` by metadata only.
+- `dream_workspace` promotes stable active/latest memories to `long-term` and `ultra-long-term` by metadata only.
+- this slice does not create duplicate memories, rewrite provenance, change scope, or perform local extraction.
 
 ### Task F. Correction
 

@@ -6,6 +6,7 @@ DROP TABLE IF EXISTS plans;
 DROP TABLE IF EXISTS notes;
 DROP TABLE IF EXISTS session_summaries;
 DROP TABLE IF EXISTS profiles;
+DROP TABLE IF EXISTS memory_corrections;
 DROP TABLE IF EXISTS memory_trace;
 DROP TABLE IF EXISTS memory_edges;
 DROP TABLE IF EXISTS memories;

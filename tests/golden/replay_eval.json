@@ -1,0 +1,608 @@
+{
+  "scenarios": [
+    {
+      "name": "pinned note and active plan outrank memory",
+      "description": "Manual controls stay above learned memory in the recall pack.",
+      "prefetch": {
+        "tenant_id": "tenant_1",
+        "workspace_id": "workspace_1",
+        "session_id": "session_1",
+        "actor_id": "agent:hermes-main",
+        "query": "VibeGravity plan",
+        "budget_tokens": 2200,
+        "mode": "default"
+      },
+      "fixtures": {
+        "notes": [
+          {
+            "id": "note_hermes_priority",
+            "tenant_id": "tenant_1",
+            "workspace_id": "workspace_1",
+            "scope": "workspace_shared",
+            "owner_entity_id": "workspace:workspace_1",
+            "text": "Pinned note: keep Hermes-first delivery as the current priority.",
+            "pinned": true
+          }
+        ],
+        "plans": [
+          {
+            "id": "plan_replay_eval_gates",
+            "tenant_id": "tenant_1",
+            "workspace_id": "workspace_1",
+            "title": "Active plan: finish replay and eval gates before broad packaging.",
+            "status": "active",
+            "scope": "workspace_shared",
+            "owner_entity_id": "workspace:workspace_1"
+          }
+        ],
+        "memories": [
+          {
+            "memory_id": "mem_1",
+            "kind": "procedure",
+            "artifact_class": "knowledge",
+            "text": "VibeGravity uses Go-first contracts for worker and recall implementation.",
+            "confidence": 0.91,
+            "scope": "workspace_shared",
+            "latest_flag": true
+          }
+        ]
+      },
+      "expect": {
+        "block_kinds": ["pinned_note", "active_plan", "memory"],
+        "block_metadata": [
+          {
+            "kind": "pinned_note",
+            "scope": "workspace_shared",
+            "source": "notes",
+            "source_id": "note_hermes_priority",
+            "status": "pinned",
+            "freshness": "stored",
+            "owner_entity_id": "workspace:workspace_1"
+          },
+          {
+            "kind": "active_plan",
+            "scope": "workspace_shared",
+            "source": "plans",
+            "source_id": "plan_replay_eval_gates",
+            "status": "active",
+            "freshness": "stored",
+            "owner_entity_id": "workspace:workspace_1"
+          },
+          {
+            "kind": "memory",
+            "scope": "workspace_shared",
+            "source": "memories",
+            "source_id": "mem_1",
+            "status": "active",
+            "freshness": "stored"
+          }
+        ],
+        "contains": ["Hermes-first", "replay and eval gates", "Go-first contracts"],
+        "sources": ["notes", "plans", "memories"],
+        "max_tokens": 2200
+      }
+    },
+    {
+      "name": "agent private memory stays owner scoped",
+      "description": "Private memory belonging to another agent must not leak into Hermes recall.",
+      "prefetch": {
+        "tenant_id": "tenant_1",
+        "workspace_id": "workspace_1",
+        "session_id": "session_1",
+        "actor_id": "agent:hermes-main",
+        "query": "private preference",
+        "budget_tokens": 2200,
+        "mode": "default"
+      },
+      "fixtures": {
+        "memories": [
+          {
+            "memory_id": "mem_private_visible",
+            "kind": "preference",
+            "artifact_class": "knowledge",
+            "text": "Hermes private preference: use compact recall wording.",
+            "confidence": 0.88,
+            "scope": "agent_private",
+            "owner_entity_id": "agent:hermes-main",
+            "latest_flag": true
+          },
+          {
+            "memory_id": "mem_private_other",
+            "kind": "preference",
+            "artifact_class": "knowledge",
+            "text": "Other agent private preference: never show this in Hermes recall.",
+            "confidence": 0.88,
+            "scope": "agent_private",
+            "owner_entity_id": "agent:claude",
+            "latest_flag": true
+          }
+        ]
+      },
+      "expect": {
+        "block_kinds": ["memory"],
+        "contains": ["Hermes private preference"],
+        "not_contains": ["Other agent private preference"],
+        "sources": ["memories"],
+        "max_tokens": 2200
+      }
+    },
+    {
+      "name": "superseded memory is suppressed",
+      "description": "Recall should keep latest memory and hide superseded facts.",
+      "prefetch": {
+        "tenant_id": "tenant_1",
+        "workspace_id": "workspace_1",
+        "session_id": "session_1",
+        "actor_id": "agent:hermes-main",
+        "query": "database store",
+        "budget_tokens": 2200,
+        "mode": "default"
+      },
+      "fixtures": {
+        "memories": [
+          {
+            "memory_id": "mem_old",
+            "kind": "fact",
+            "artifact_class": "knowledge",
+            "text": "Old fact: SQLite is the canonical store.",
+            "confidence": 0.7,
+            "scope": "workspace_shared",
+            "latest_flag": false
+          },
+          {
+            "memory_id": "mem_new",
+            "kind": "fact",
+            "artifact_class": "knowledge",
+            "text": "Current fact: PostgreSQL is the canonical store.",
+            "confidence": 0.95,
+            "scope": "workspace_shared",
+            "latest_flag": true
+          }
+        ]
+      },
+      "expect": {
+        "block_kinds": ["memory"],
+        "contains": ["PostgreSQL is the canonical store"],
+        "not_contains": ["SQLite is the canonical store"],
+        "sources": ["memories"],
+        "max_tokens": 2200
+      }
+    },
+    {
+      "name": "degraded recall still returns profile and summary",
+      "description": "When memory search is unavailable or query is empty, existing profile and session summary still provide useful context.",
+      "prefetch": {
+        "tenant_id": "tenant_1",
+        "workspace_id": "workspace_1",
+        "session_id": "session_1",
+        "actor_id": "agent:hermes-main",
+        "query": "",
+        "budget_tokens": 120,
+        "mode": "small"
+      },
+      "fixtures": {
+        "profiles": [
+          {
+            "entity_id": "agent:hermes-main",
+            "scope": "agent_private",
+            "static_json": {"style": "brief", "runtime": "Hermes-first"}
+          }
+        ],
+        "session_summaries": [
+          {
+            "tenant_id": "tenant_1",
+            "workspace_id": "workspace_1",
+            "session_id": "session_1",
+            "summary_text": "Session summary: eval work is focused on deterministic replay gates."
+          }
+        ]
+      },
+      "expect": {
+        "block_kinds": ["profile_static", "session_summary"],
+        "contains": ["Hermes-first", "deterministic replay gates"],
+        "sources": ["profile", "session_summaries"],
+        "max_tokens": 120
+      }
+    },
+    {
+      "name": "budget truncates low priority context",
+      "description": "A small token budget must keep the pack within the requested ceiling.",
+      "prefetch": {
+        "tenant_id": "tenant_1",
+        "workspace_id": "workspace_1",
+        "session_id": "session_1",
+        "actor_id": "agent:hermes-main",
+        "query": "quality",
+        "budget_tokens": 8,
+        "mode": "small"
+      },
+      "fixtures": {
+        "notes": [
+          {
+            "tenant_id": "tenant_1",
+            "workspace_id": "workspace_1",
+            "scope": "workspace_shared",
+            "owner_entity_id": "workspace:workspace_1",
+            "text": "Quality gate note: golden scenarios should remain compact deterministic and easy to review.",
+            "pinned": true
+          }
+        ],
+        "memories": [
+          {
+            "memory_id": "mem_quality",
+            "kind": "procedure",
+            "artifact_class": "knowledge",
+            "text": "Quality memory: use replay before prompt changes.",
+            "confidence": 0.9,
+            "scope": "workspace_shared",
+            "latest_flag": true
+          }
+        ]
+      },
+      "expect": {
+        "block_kinds": ["pinned_note"],
+        "contains": ["Quality gate note"],
+        "not_contains": ["Quality memory"],
+        "sources": ["notes"],
+        "max_tokens": 8
+      }
+    }
+  ],
+  "graph_replay_scenarios": [
+    {
+      "name": "update memory replay suppresses prior fact",
+      "description": "Replaying the same update_memory operation must keep one replacement, one trace, one updates edge, and hide the superseded fact from recall.",
+      "tenant_id": "tenant_1",
+      "workspace_id": "workspace_1",
+      "job_id": "job_graph_update_store",
+      "raw_event_ids": ["evt_graph_update_store"],
+      "retry_count": 2,
+      "initial_memories": [
+        {
+          "memory_id": "mem_graph_store_old",
+          "kind": "fact",
+          "artifact_class": "knowledge",
+          "text": "Old fact: SQLite is the canonical store.",
+          "confidence": 0.7,
+          "scope": "workspace_shared",
+          "owner_entity_id": "workspace:workspace_1",
+          "latest_flag": true
+        }
+      ],
+      "operations": [
+        {
+          "operation_id": "op_graph_update_store",
+          "kind": "update_memory",
+          "memory": {
+            "target_id": "mem_graph_store_old",
+            "kind": "fact",
+            "artifact_class": "knowledge",
+            "scope": "workspace_shared",
+            "owner_entity_id": "workspace:workspace_1",
+            "text": "Current fact: PostgreSQL is the canonical store.",
+            "confidence": 0.97,
+            "metadata_json": {}
+          },
+          "edge": {
+            "to_memory_id": "mem_graph_store_old",
+            "edge_kind": "updates",
+            "confidence": 0.99
+          },
+          "raw_event_ids": ["evt_graph_update_store"],
+          "metadata": {}
+        }
+      ],
+      "prefetch": {
+        "tenant_id": "tenant_1",
+        "workspace_id": "workspace_1",
+        "session_id": "session_1",
+        "actor_id": "agent:hermes-main",
+        "query": "canonical store",
+        "budget_tokens": 2200,
+        "mode": "default"
+      },
+      "expect": {
+        "applied_operation_count": 1,
+        "memory_count": 2,
+        "trace_count": 1,
+        "edge_count": 1,
+        "superseded_memory_ids": ["mem_graph_store_old"],
+        "block_kinds": ["memory"],
+        "contains": ["PostgreSQL is the canonical store"],
+        "not_contains": ["SQLite is the canonical store"],
+        "sources": ["memories"],
+        "max_tokens": 2200
+      }
+    },
+    {
+      "name": "correction replay changes later recall",
+      "description": "A correction-shaped update_memory replay should make the corrected replacement visible and keep the prior preference suppressed.",
+      "tenant_id": "tenant_1",
+      "workspace_id": "workspace_1",
+      "job_id": "job_graph_correction_replay",
+      "raw_event_ids": ["evt_graph_correction_replay"],
+      "retry_count": 2,
+      "initial_memories": [
+        {
+          "memory_id": "mem_graph_preference_old",
+          "kind": "preference",
+          "artifact_class": "knowledge",
+          "text": "Old preference: use verbose recall summaries.",
+          "confidence": 0.75,
+          "scope": "agent_private",
+          "owner_entity_id": "agent:hermes-main",
+          "latest_flag": true
+        }
+      ],
+      "operations": [
+        {
+          "operation_id": "op_graph_correction_replay",
+          "kind": "update_memory",
+          "memory": {
+            "target_id": "mem_graph_preference_old",
+            "kind": "preference",
+            "artifact_class": "knowledge",
+            "scope": "agent_private",
+            "owner_entity_id": "agent:hermes-main",
+            "text": "Corrected preference: use compact recall summaries.",
+            "confidence": 0.96,
+            "metadata_json": {"source": "operator_correction"}
+          },
+          "edge": {
+            "to_memory_id": "mem_graph_preference_old",
+            "edge_kind": "updates",
+            "confidence": 0.99
+          },
+          "raw_event_ids": ["evt_graph_correction_replay"],
+          "metadata": {"source": "operator_correction"}
+        }
+      ],
+      "prefetch": {
+        "tenant_id": "tenant_1",
+        "workspace_id": "workspace_1",
+        "session_id": "session_1",
+        "actor_id": "agent:hermes-main",
+        "query": "recall summaries",
+        "budget_tokens": 2200,
+        "mode": "default"
+      },
+      "expect": {
+        "applied_operation_count": 1,
+        "memory_count": 2,
+        "trace_count": 1,
+        "edge_count": 1,
+        "superseded_memory_ids": ["mem_graph_preference_old"],
+        "trace_contains": ["operator_correction"],
+        "block_kinds": ["memory"],
+        "contains": ["Corrected preference: use compact recall summaries"],
+        "not_contains": ["verbose recall summaries"],
+        "sources": ["memories"],
+        "max_tokens": 2200
+      }
+    },
+    {
+      "name": "group shared graph write remains rejected",
+      "description": "The eval fixture keeps the group_shared stop-line visible until membership validation exists.",
+      "tenant_id": "tenant_1",
+      "workspace_id": "workspace_1",
+      "job_id": "job_graph_group_rejected",
+      "raw_event_ids": ["evt_graph_group_rejected"],
+      "initial_memories": [
+        {
+          "memory_id": "mem_group_old",
+          "kind": "fact",
+          "artifact_class": "knowledge",
+          "text": "Group fact: private launch room decision.",
+          "confidence": 0.8,
+          "scope": "group_shared",
+          "group_id": "group_design",
+          "owner_entity_id": "group:group_design",
+          "latest_flag": true
+        }
+      ],
+      "operations": [
+        {
+          "operation_id": "op_graph_group_rejected",
+          "kind": "update_memory",
+          "memory": {
+            "target_id": "mem_group_old",
+            "kind": "fact",
+            "artifact_class": "knowledge",
+            "scope": "group_shared",
+            "group_id": "group_design",
+            "owner_entity_id": "group:group_design",
+            "text": "Group fact: launch room decision changed.",
+            "confidence": 0.9,
+            "metadata_json": {}
+          },
+          "edge": {
+            "to_memory_id": "mem_group_old",
+            "edge_kind": "updates",
+            "confidence": 0.9
+          },
+          "raw_event_ids": ["evt_graph_group_rejected"],
+          "metadata": {}
+        }
+      ],
+      "expect": {
+        "rejected": true,
+        "error_contains": "requires membership validation before writes",
+        "applied_operation_count": 0,
+        "memory_count": 1,
+        "trace_count": 0,
+        "edge_count": 0
+      }
+    }
+  ],
+  "worker_backlog_scenarios": [
+    {
+      "name": "stage1 outage retries without graph writes",
+      "description": "A deterministic mocked Stage 1 outage uses the retry path, then recovery writes one derived memory with trace only after reasoning succeeds.",
+      "tenant_id": "tenant_1",
+      "workspace_id": "workspace_1",
+      "job_id": "job_worker_stage1_outage",
+      "stage_1_outage_attempts": 1,
+      "max_worker_passes": 2,
+      "raw_events": [
+        {
+          "event_id": "evt_worker_stage1_outage",
+          "session_id": "session_1",
+          "actor_id": "agent:hermes-main",
+          "payload_json": {"text": "Remember that eval gates should simulate Codex outage locally."}
+        }
+      ],
+      "operations": [
+        {
+          "operation_id": "op_worker_stage1_create",
+          "kind": "create_memory",
+          "memory": {
+            "kind": "procedure",
+            "artifact_class": "knowledge",
+            "scope": "workspace_shared",
+            "owner_entity_id": "workspace:workspace_1",
+            "text": "Eval gates simulate Codex outage locally before real Codex is enabled.",
+            "confidence": 0.92,
+            "metadata_json": {}
+          },
+          "raw_event_ids": ["evt_worker_stage1_outage"],
+          "metadata": {}
+        }
+      ],
+      "expect": {
+        "completed_jobs": 1,
+        "failed_attempts": 1,
+        "blocked_jobs": 0,
+        "queued_jobs": 0,
+        "applied_operation_count": 1,
+        "memory_count": 1,
+        "trace_count": 1,
+        "edge_count": 0,
+        "no_graph_writes_before_success": true,
+        "error_contains": "mock codex stage1 outage"
+      }
+    },
+    {
+      "name": "stage2 outage recovery replay is idempotent",
+      "description": "A deterministic mocked Stage 2 outage retries, then update_memory recovery and replay keep one replacement, one trace, and one updates edge.",
+      "tenant_id": "tenant_1",
+      "workspace_id": "workspace_1",
+      "job_id": "job_worker_stage2_outage",
+      "stage_2_outage_attempts": 1,
+      "replay_after_success_count": 1,
+      "max_worker_passes": 2,
+      "raw_events": [
+        {
+          "event_id": "evt_worker_stage2_outage",
+          "session_id": "session_1",
+          "actor_id": "agent:hermes-main",
+          "payload_json": {"text": "Correction: worker backlog recovery must not duplicate graph rows."}
+        }
+      ],
+      "initial_memories": [
+        {
+          "memory_id": "mem_worker_replay_old",
+          "kind": "fact",
+          "artifact_class": "knowledge",
+          "text": "Old fact: worker replay can duplicate graph rows.",
+          "confidence": 0.7,
+          "scope": "workspace_shared",
+          "owner_entity_id": "workspace:workspace_1",
+          "latest_flag": true
+        }
+      ],
+      "operations": [
+        {
+          "operation_id": "op_worker_stage2_update",
+          "kind": "update_memory",
+          "memory": {
+            "target_id": "mem_worker_replay_old",
+            "kind": "fact",
+            "artifact_class": "knowledge",
+            "scope": "workspace_shared",
+            "owner_entity_id": "workspace:workspace_1",
+            "text": "Current fact: worker recovery replay stays idempotent for memory, trace, and edge rows.",
+            "confidence": 0.96,
+            "metadata_json": {}
+          },
+          "edge": {
+            "to_memory_id": "mem_worker_replay_old",
+            "edge_kind": "updates",
+            "confidence": 0.99
+          },
+          "raw_event_ids": ["evt_worker_stage2_outage"],
+          "metadata": {}
+        }
+      ],
+      "expect": {
+        "completed_jobs": 1,
+        "failed_attempts": 1,
+        "blocked_jobs": 0,
+        "queued_jobs": 0,
+        "applied_operation_count": 1,
+        "memory_count": 2,
+        "trace_count": 1,
+        "edge_count": 1,
+        "no_graph_writes_before_success": true,
+        "error_contains": "mock codex stage2 outage"
+      }
+    },
+    {
+      "name": "unsupported apply work becomes blocked",
+      "description": "Deterministic archive_memory work is observable as blocked and does not loop through transient retry.",
+      "tenant_id": "tenant_1",
+      "workspace_id": "workspace_1",
+      "job_id": "job_worker_archive_blocked",
+      "max_worker_passes": 2,
+      "raw_events": [
+        {
+          "event_id": "evt_worker_archive_blocked",
+          "session_id": "session_1",
+          "actor_id": "agent:hermes-main",
+          "payload_json": {"text": "Archive the outdated memory."}
+        }
+      ],
+      "initial_memories": [
+        {
+          "memory_id": "mem_worker_archive_target",
+          "kind": "fact",
+          "artifact_class": "knowledge",
+          "text": "Fact targeted by unsupported archive work.",
+          "confidence": 0.8,
+          "scope": "workspace_shared",
+          "owner_entity_id": "workspace:workspace_1",
+          "latest_flag": true
+        }
+      ],
+      "operations": [
+        {
+          "operation_id": "op_worker_archive_blocked",
+          "kind": "archive_memory",
+          "memory": {
+            "target_id": "mem_worker_archive_target",
+            "kind": "fact",
+            "artifact_class": "knowledge",
+            "scope": "workspace_shared",
+            "owner_entity_id": "workspace:workspace_1",
+            "text": "Archive target placeholder.",
+            "confidence": 0.8,
+            "metadata_json": {}
+          },
+          "raw_event_ids": ["evt_worker_archive_blocked"],
+          "metadata": {}
+        }
+      ],
+      "expect": {
+        "completed_jobs": 0,
+        "failed_attempts": 0,
+        "blocked_jobs": 1,
+        "queued_jobs": 0,
+        "applied_operation_count": 0,
+        "memory_count": 1,
+        "trace_count": 0,
+        "edge_count": 0,
+        "no_graph_writes_before_success": true,
+        "error_contains": "unsupported apply work"
+      }
+    }
+  ]
+}

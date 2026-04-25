@@ -37,15 +37,26 @@ type PrefetchResponse struct {
 
 // RecallBlock is one typed item in a recall pack.
 type RecallBlock struct {
-	Kind     string `json:"kind"`
-	Priority int    `json:"priority"`
-	Text     string `json:"text"`
+	ID            string      `json:"id,omitempty"`
+	Kind          string      `json:"kind"`
+	Priority      int         `json:"priority"`
+	Text          string      `json:"text"`
+	Scope         MemoryScope `json:"scope,omitempty"`
+	Source        string      `json:"source,omitempty"`
+	SourceID      string      `json:"source_id,omitempty"`
+	Status        string      `json:"status,omitempty"`
+	Freshness     string      `json:"freshness,omitempty"`
+	OwnerEntityID string      `json:"owner_entity_id,omitempty"`
 }
 
 // RecallMeta describes recall assembly and token budget metadata.
 type RecallMeta struct {
-	EstimatedTokens int      `json:"estimated_tokens"`
-	Sources         []string `json:"sources"`
+	EstimatedTokens     int      `json:"estimated_tokens"`
+	Sources             []string `json:"sources"`
+	Freshness           string   `json:"freshness,omitempty"`
+	FreshnessLagSeconds *int64   `json:"freshness_lag_seconds,omitempty"`
+	Degraded            bool     `json:"degraded"`
+	DegradedReasons     []string `json:"degraded_reasons,omitempty"`
 }
 
 // SyncTurnRequest records a complete turn through the hot ingest path.
@@ -99,6 +110,8 @@ type AddDocumentResponse struct {
 type SearchMemoriesRequest struct {
 	TenantID        string          `json:"tenant_id"`
 	WorkspaceID     string          `json:"workspace_id"`
+	OwnerEntityID   string          `json:"owner_entity_id,omitempty"`
+	VisibleGroupIDs []string        `json:"visible_group_ids,omitempty"`
 	Query           string          `json:"query"`
 	Scopes          []MemoryScope   `json:"scopes"`
 	ArtifactClasses []ArtifactClass `json:"artifact_classes"`
@@ -117,6 +130,8 @@ type MemoryResult struct {
 	Text          string        `json:"text"`
 	Confidence    float64       `json:"confidence"`
 	Scope         MemoryScope   `json:"scope"`
+	GroupID       *string       `json:"group_id,omitempty"`
+	OwnerEntityID string        `json:"owner_entity_id,omitempty"`
 	ValidFrom     time.Time     `json:"valid_from"`
 	LatestFlag    bool          `json:"latest_flag"`
 }
@@ -159,6 +174,14 @@ type AddNoteResponse struct {
 	Status string `json:"status"`
 }
 
+// ListPinnedNotesRequest loads visible pinned notes for recall or Stage 2 context.
+type ListPinnedNotesRequest struct {
+	TenantID      string        `json:"tenant_id"`
+	WorkspaceID   string        `json:"workspace_id"`
+	OwnerEntityID string        `json:"owner_entity_id,omitempty"`
+	Scopes        []MemoryScope `json:"scopes"`
+}
+
 // PlanItemInput is an item payload used when creating or updating a plan.
 type PlanItemInput struct {
 	ID           string          `json:"id,omitempty"`
@@ -184,6 +207,14 @@ type CreatePlanResponse struct {
 	PlanID  string   `json:"plan_id"`
 	ItemIDs []string `json:"item_ids"`
 	Status  string   `json:"status"`
+}
+
+// GetActivePlansRequest loads visible active plans for recall or Stage 2 context.
+type GetActivePlansRequest struct {
+	TenantID      string        `json:"tenant_id"`
+	WorkspaceID   string        `json:"workspace_id"`
+	OwnerEntityID string        `json:"owner_entity_id,omitempty"`
+	Scopes        []MemoryScope `json:"scopes"`
 }
 
 // UpdatePlanRequest updates a structured plan.
@@ -216,10 +247,12 @@ type CorrectMemoryRequest struct {
 
 // CorrectMemoryResponse reports the correction side effects.
 type CorrectMemoryResponse struct {
-	MemoryID     string `json:"memory_id"`
-	RawEventID   string `json:"raw_event_id"`
-	TraceWritten bool   `json:"trace_written"`
-	Status       string `json:"status"`
+	MemoryID           string `json:"memory_id"`
+	RawEventID         string `json:"raw_event_id"`
+	CorrectionID       string `json:"correction_id,omitempty"`
+	CorrectionRecorded bool   `json:"correction_recorded"`
+	TraceWritten       bool   `json:"trace_written"`
+	Status             string `json:"status"`
 }
 
 // GetTimelineRequest asks for a timeline view assembled from existing artifacts.
@@ -251,9 +284,11 @@ type TimelineItem struct {
 
 // ExplainMemoryRequest asks for provenance for one memory.
 type ExplainMemoryRequest struct {
-	TenantID    string `json:"tenant_id"`
-	WorkspaceID string `json:"workspace_id"`
-	MemoryID    string `json:"memory_id"`
+	TenantID        string   `json:"tenant_id"`
+	WorkspaceID     string   `json:"workspace_id"`
+	MemoryID        string   `json:"memory_id"`
+	EntityID        string   `json:"entity_id,omitempty"`
+	VisibleGroupIDs []string `json:"visible_group_ids,omitempty"`
 }
 
 // ExplainMemoryResponse returns trace, edges, and source event evidence.

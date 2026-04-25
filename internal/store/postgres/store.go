@@ -16,7 +16,23 @@ package postgres
 
 import (
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/parker-jungwoo-hwang/vibegravity/internal/store"
 )
+
+var _ store.RawEventStore = (*Store)(nil)
+var _ store.JobStore = (*Store)(nil)
+var _ store.JobMetricsStore = (*Store)(nil)
+var _ store.MemoryStore = (*Store)(nil)
+var _ store.CorrectionStore = (*Store)(nil)
+var _ store.TimelineStore = (*Store)(nil)
+var _ store.ProfileStore = (*Store)(nil)
+var _ store.NoteStore = (*Store)(nil)
+var _ store.PlanStore = (*Store)(nil)
+var _ store.DocumentStore = (*Store)(nil)
+var _ store.SessionSummaryStore = (*Store)(nil)
+var _ store.DreamingStore = (*Store)(nil)
+var _ store.GroupStore = (*Store)(nil)
 
 // Store implements the core storage interfaces for VibeGravity.
 type Store struct {

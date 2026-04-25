@@ -4,7 +4,7 @@
 // LAYER    : domain
 // STATUS   : active
 // ------------------------------------------------------------
-// EXPORTS  : Memory, MemoryEdge, MemoryTrace
+// EXPORTS  : Memory, MemoryEdge, MemoryTrace, MemoryCorrection
 // DEPENDS  : encoding/json, time, internal/core/kind.go, internal/core/scope.go
 // USED_BY  : apply engine, recall, storage, explain-memory path
 // ------------------------------------------------------------
@@ -64,4 +64,19 @@ type MemoryTrace struct {
 	OperatorCorrectionFlag bool            `json:"operator_correction_flag"`
 	RelatedDocumentIDs     []string        `json:"related_document_ids"`
 	CreatedAt              time.Time       `json:"created_at"`
+}
+
+// MemoryCorrection records a human correction intent without superseding a memory.
+type MemoryCorrection struct {
+	ID             string          `json:"id"`
+	TenantID       string          `json:"tenant_id"`
+	WorkspaceID    string          `json:"workspace_id"`
+	MemoryID       string          `json:"memory_id"`
+	OperatorID     string          `json:"operator_id"`
+	RawEventID     string          `json:"raw_event_id"`
+	IdempotencyKey string          `json:"idempotency_key"`
+	CorrectionText string          `json:"correction_text"`
+	EvidenceJSON   json.RawMessage `json:"evidence_json"`
+	Status         string          `json:"status"`
+	CreatedAt      time.Time       `json:"created_at"`
 }

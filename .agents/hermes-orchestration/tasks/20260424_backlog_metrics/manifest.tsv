@@ -1,0 +1,3 @@
+default	.agents/hermes-orchestration/tasks/20260424_backlog_metrics/default.md
+vuitton	.agents/hermes-orchestration/tasks/20260424_backlog_metrics/vuitton.md
+bottega	.agents/hermes-orchestration/tasks/20260424_backlog_metrics/bottega.md

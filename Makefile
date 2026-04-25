@@ -1,4 +1,4 @@
-.PHONY: build test lint check-headers clean dev-server dev-worker setup
+.PHONY: build test eval integration-postgres lint check-headers clean dev-server dev-worker setup
 
 GOLANGCI_LINT ?= $(shell command -v golangci-lint 2>/dev/null || printf "%s/bin/golangci-lint" "$$(go env GOPATH)")
 
@@ -11,6 +11,22 @@ build:
 # Run all tests
 test:
 	go test -v ./...
+
+# Run deterministic golden quality evals
+eval:
+	go run ./cmd/cli eval golden --path tests/golden/replay_eval.json
+	go run ./cmd/cli eval demo
+
+# Run opt-in live PostgreSQL integration checks.
+# Keeps the default local gate deterministic: `make test` still works without DB.
+integration-postgres:
+	@if [ -z "$$VIBEGRAVITY_DB_URL" ]; then \
+		printf "%s\n" "Skipping live PostgreSQL integration gate: VIBEGRAVITY_DB_URL is not set."; \
+		printf "%s\n" "Prepare a migrated scratch DB, export VIBEGRAVITY_DB_URL, then rerun: make integration-postgres"; \
+	else \
+		printf "%s\n" "Running live PostgreSQL integration gate against VIBEGRAVITY_DB_URL."; \
+		go test -v -count=1 ./internal/store/postgres ./internal/kernel ./tests; \
+	fi
 
 # Run linter
 lint:

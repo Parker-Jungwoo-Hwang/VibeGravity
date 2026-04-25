@@ -4,7 +4,7 @@
 // LAYER    : domain
 // STATUS   : active
 // ------------------------------------------------------------
-// EXPORTS  : ErrNotFound, ErrDuplicate, ErrInvalidArgument, ErrConflict
+// EXPORTS  : ErrNotFound, ErrDuplicate, ErrInvalidArgument, ErrConflict, ErrNotImplemented
 // DEPENDS  : errors
 // USED_BY  : internal/core services, internal/store implementations
 // ------------------------------------------------------------
@@ -26,3 +26,6 @@ var ErrInvalidArgument = errors.New("invalid argument")
 
 // ErrConflict reports that a request would violate storage invariants.
 var ErrConflict = errors.New("conflict")
+
+// ErrNotImplemented reports that a contract exists but the behavior has not landed yet.
+var ErrNotImplemented = errors.New("not implemented")

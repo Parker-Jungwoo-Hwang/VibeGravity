@@ -5,7 +5,7 @@
 // STATUS   : active
 // ------------------------------------------------------------
 // EXPORTS  : main
-// DEPENDS  : internal/config, internal/db, internal/httpapi, internal/store/postgres
+// DEPENDS  : internal/config, internal/db, internal/httpapi, internal/ingest, internal/kernel, internal/recall, internal/store/postgres
 // USED_BY  : Makefile, deployments
 // ------------------------------------------------------------
 // AGENT_NOTE: Keep API hot path behavior separate from worker reasoning work.
@@ -27,6 +27,9 @@ import (
 	"github.com/parker-jungwoo-hwang/vibegravity/internal/config"
 	"github.com/parker-jungwoo-hwang/vibegravity/internal/db"
 	"github.com/parker-jungwoo-hwang/vibegravity/internal/httpapi"
+	"github.com/parker-jungwoo-hwang/vibegravity/internal/ingest"
+	"github.com/parker-jungwoo-hwang/vibegravity/internal/kernel"
+	"github.com/parker-jungwoo-hwang/vibegravity/internal/recall"
 	"github.com/parker-jungwoo-hwang/vibegravity/internal/store/postgres"
 )
 
@@ -44,12 +47,42 @@ func main() {
 	}
 	defer pool.Close()
 
-	// Store initialization (mock implementation for now)
-	_ = postgres.NewStore(pool)
+	pgStore := postgres.NewStore(pool)
+	ingestService, err := ingest.NewService(ingest.Dependencies{
+		RawEvents: pgStore,
+		Jobs:      pgStore,
+	})
+	if err != nil {
+		log.Fatalf("Failed to initialize ingest service: %v", err)
+	}
+	recallAssembler := recall.NewAssembler(recall.Dependencies{
+		Notes:     pgStore,
+		Plans:     pgStore,
+		Memories:  pgStore,
+		Documents: pgStore,
+		Profiles:  pgStore,
+		Summaries: pgStore,
+		Groups:    pgStore,
+		Freshness: recall.BacklogFreshnessProvider{Jobs: pgStore},
+	})
+	coreService, err := kernel.NewService(kernel.Dependencies{
+		Ingest:      ingestService,
+		Recall:      recallAssembler,
+		Notes:       pgStore,
+		Plans:       pgStore,
+		Memories:    pgStore,
+		Corrections: pgStore,
+		Jobs:        pgStore,
+		Timeline:    pgStore,
+		Documents:   pgStore,
+	})
+	if err != nil {
+		log.Fatalf("Failed to initialize VibeGravity service: %v", err)
+	}
 
 	app := &httpapi.App{
-		// Service: coreService (to be wired later)
-		DBPool: pool,
+		Service: coreService,
+		DBPool:  pool,
 	}
 
 	router := httpapi.NewRouter(app)

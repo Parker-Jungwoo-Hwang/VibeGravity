@@ -2,15 +2,15 @@
 
 ## Repo purpose
 
-This repo builds VibeGravity.  
-VibeGravity is a shared memory kernel for Hermes and other agents.  
+This repo builds VibeGravity.
+VibeGravity is a shared memory kernel for Hermes and other agents.
 It is not a chat UI and not a generic agent runtime.
 
 ## Direction
 
-Keep Hermes-first delivery.  
-Keep local runtime embedding-only in v1.  
-Keep Codex-first reasoning for text interpretation and graph operations.  
+Keep Hermes-first delivery.
+Keep local runtime embedding-only in v1.
+Keep Codex-first reasoning for text interpretation and graph operations.
 Keep agent_private, workspace_shared, and group_shared memory separate.
 
 ## Tech stack
@@ -59,8 +59,8 @@ vibegravity/
 
 ## Reasoning contract
 
-Keep Stage 1 (Extract) and Stage 2 (Resolve) schema-first and structured JSON only.  
-Do not let free-form reasoning output cross the apply boundary.  
+Keep Stage 1 (Extract) and Stage 2 (Resolve) schema-first and structured JSON only.
+Do not let free-form reasoning output cross the apply boundary.
 Apply engine validates before committing — see `05_runtime-contracts`.
 
 ## Open-source code policy
@@ -96,7 +96,7 @@ Always read these files before making non-trivial changes:
 
 local embeddings → neighborhood retrieval → Codex stage 1 extract → Codex stage 2 resolve → apply engine
 
-Local LLM is embedding-only. Retrieval helpers and lexical fallback are allowed.  
+Local LLM is embedding-only. Retrieval helpers and lexical fallback are allowed.
 Local extractor must not be reintroduced as the default path.
 
 ## Core interfaces
@@ -179,9 +179,17 @@ See `plans/06_data-model_and_storage-invariants.md` for full schema.
 
 ## Workflow
 
-For complex tasks, plan first.  
-For repeated procedures, use skills from `.agents/skills/`.  
-For bounded exploration, use subagents.  
+For complex tasks, plan first.
+For repeated procedures, use skills from `.agents/skills/`.
+For bounded exploration, use subagents.
+For parallel or multi-agent work, read `.agents/coordination/WORK_PROGRESS.md`
+first and claim exact files with `.agents/coordination/agent-work.sh` before
+editing. Release each file immediately when finished. See
+`.agents/coordination/README.md` for the full protocol.
+If the operator gives only
+`.agents/coordination/UNIVERSAL_AGENT_PROMPT.md` or its absolute path, treat
+that as an instruction to read and execute the prompt immediately; do not ask
+what to do with it.
 After coding, run checks, then review your own diff, then update docs.
 
 ## Done means

@@ -41,6 +41,8 @@ const (
 	MemoryKindSummary MemoryKind = "summary"
 	// MemoryKindHypothesis records an uncertain inference.
 	MemoryKindHypothesis MemoryKind = "hypothesis"
+	// MemoryKindCorrection records an operator correction intent in timeline views.
+	MemoryKindCorrection MemoryKind = "correction"
 )
 
 // EdgeKind describes the relationship between two memories or artifacts.
@@ -95,6 +97,8 @@ const (
 	JobKindRebuildProfile JobKind = "rebuild_profile"
 	// JobKindMaintenance runs cleanup and backfill work.
 	JobKindMaintenance JobKind = "maintenance"
+	// JobKindCorrectionApply records synchronous operator correction supersession provenance.
+	JobKindCorrectionApply JobKind = "correction_apply"
 )
 
 // ArtifactClass is the broad retrieval lane for a memory.
