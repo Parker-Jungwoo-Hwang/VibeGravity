@@ -1,4 +1,83 @@
+# macOS and editor noise
 .DS_Store
+.AppleDouble
+.LSOverride
+._*
+*~
+*.swp
+*.swo
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.example.json
+
+# Local environment, credentials, and machine-specific config
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+.envrc
+!.envrc.example
+*.local.env
+*.local.json
+*.local.yaml
+*.local.yml
+*.local.toml
+*.secret
+*.secrets
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Local agent/runtime state
 .omx/
+.codex/
+.claude/settings.local.json
+.hermes/
+
+# Build and release artifacts
 bin/
 dist/
+build/
+out/
+release/
+*.test
+*.prof
+*.coverprofile
+coverage/
+coverage.out
+
+# Local databases, dumps, and runtime files
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal
+*.dump
+*.backup
+*.bak
+*.pid
+
+# Logs and temporary files
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+
+# Tool and language caches
+go.work
+go.work.sum
+node_modules/
+.venv/
+.venv*/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
