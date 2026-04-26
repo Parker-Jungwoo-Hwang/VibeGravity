@@ -5,7 +5,7 @@
 // STATUS   : active
 // ------------------------------------------------------------
 // EXPORTS  : main
-// DEPENDS  : internal/config, internal/db, internal/httpapi, internal/ingest, internal/kernel, internal/recall, internal/store/postgres
+// DEPENDS  : internal/config, internal/httpapi, internal/runtime
 // USED_BY  : Makefile, deployments
 // ------------------------------------------------------------
 // AGENT_NOTE: Keep API hot path behavior separate from worker reasoning work.
@@ -18,19 +18,17 @@ import (
 	"context"
 	"errors"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/parker-jungwoo-hwang/vibegravity/internal/config"
-	"github.com/parker-jungwoo-hwang/vibegravity/internal/db"
 	"github.com/parker-jungwoo-hwang/vibegravity/internal/httpapi"
-	"github.com/parker-jungwoo-hwang/vibegravity/internal/ingest"
-	"github.com/parker-jungwoo-hwang/vibegravity/internal/kernel"
-	"github.com/parker-jungwoo-hwang/vibegravity/internal/recall"
-	"github.com/parker-jungwoo-hwang/vibegravity/internal/store/postgres"
+	"github.com/parker-jungwoo-hwang/vibegravity/internal/runtime"
 )
 
 func main() {
@@ -41,55 +39,26 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	pool, err := db.NewPool(ctx, cfg)
+	app, closeRuntime, err := runtime.OpenHTTPApp(ctx, cfg)
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		log.Fatalf("Failed to initialize HTTP runtime: %v", err)
 	}
-	defer pool.Close()
-
-	pgStore := postgres.NewStore(pool)
-	ingestService, err := ingest.NewService(ingest.Dependencies{
-		RawEvents: pgStore,
-		Jobs:      pgStore,
-	})
-	if err != nil {
-		log.Fatalf("Failed to initialize ingest service: %v", err)
-	}
-	recallAssembler := recall.NewAssembler(recall.Dependencies{
-		Notes:     pgStore,
-		Plans:     pgStore,
-		Memories:  pgStore,
-		Documents: pgStore,
-		Profiles:  pgStore,
-		Summaries: pgStore,
-		Groups:    pgStore,
-		Freshness: recall.BacklogFreshnessProvider{Jobs: pgStore},
-	})
-	coreService, err := kernel.NewService(kernel.Dependencies{
-		Ingest:      ingestService,
-		Recall:      recallAssembler,
-		Notes:       pgStore,
-		Plans:       pgStore,
-		Memories:    pgStore,
-		Corrections: pgStore,
-		Jobs:        pgStore,
-		Timeline:    pgStore,
-		Documents:   pgStore,
-	})
-	if err != nil {
-		log.Fatalf("Failed to initialize VibeGravity service: %v", err)
-	}
-
-	app := &httpapi.App{
-		Service: coreService,
-		DBPool:  pool,
-	}
+	defer closeRuntime()
 
 	router := httpapi.NewRouter(app)
 
+	addr := serverAddr()
+	if !isLoopbackAddr(addr) && os.Getenv("VIBEGRAVITY_UNSAFE_ALLOW_NON_LOOPBACK") != "true" {
+		log.Fatalf("Refusing non-loopback bind %q. Set VIBEGRAVITY_UNSAFE_ALLOW_NON_LOOPBACK=true only for explicitly trusted local validation.", addr)
+	}
+
 	srv := &http.Server{
-		Addr:    ":8080",
-		Handler: router,
+		Addr:              addr,
+		Handler:           router,
+		ReadTimeout:       15 * time.Second,
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       60 * time.Second,
 	}
 
 	// Setup graceful shutdown
@@ -116,4 +85,29 @@ func main() {
 	// Wait for context cancellation to complete
 	<-ctx.Done()
 	log.Println("API Server stopped.")
+}
+
+func serverAddr() string {
+	return firstNonEmpty(os.Getenv("VIBEGRAVITY_HTTP_ADDR"), "127.0.0.1:8080")
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func isLoopbackAddr(addr string) bool {
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		return false
+	}
+	if host == "localhost" {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }

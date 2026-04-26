@@ -454,23 +454,29 @@ func jobErrorString(jobErr error) string {
 }
 
 // RequeueBlockedJob manually returns one blocked job to the queued worker pool.
-func (s *Store) RequeueBlockedJob(ctx context.Context, jobID string) error {
-	return requeueBlockedJob(ctx, s.pool, jobID)
+func (s *Store) RequeueBlockedJob(ctx context.Context, jobID string, reason string) error {
+	return requeueBlockedJob(ctx, s.pool, jobID, reason)
 }
 
-func requeueBlockedJob(ctx context.Context, exec jobExecutor, jobID string) error {
+func requeueBlockedJob(ctx context.Context, exec jobExecutor, jobID string, reason string) error {
 	if jobID == "" {
 		return fmt.Errorf("%w: blocked job id is required", core.ErrInvalidArgument)
 	}
+	reason = strings.TrimSpace(reason)
 	tag, err := exec.Exec(ctx, `
 		UPDATE ingest_jobs
 		SET status = 'queued',
 		    available_at = now(),
 		    locked_by = NULL,
 		    locked_at = NULL,
+		    last_error = CASE
+		        WHEN $2 = '' THEN last_error
+		        WHEN last_error IS NULL OR last_error = '' THEN 'operator requeue reason: ' || $2
+		        ELSE last_error || E'\noperator requeue reason: ' || $2
+		    END,
 		    updated_at = now()
 		WHERE id = $1 AND status = 'blocked'
-	`, jobID)
+	`, jobID, reason)
 	if err != nil {
 		return fmt.Errorf("requeue blocked job: %w", err)
 	}

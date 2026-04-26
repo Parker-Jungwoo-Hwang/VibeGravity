@@ -7,12 +7,13 @@ PROGRESS_FILE="$STATE_DIR/WORK_PROGRESS.md"
 CLAIMS_FILE="$STATE_DIR/claims.tsv"
 LOG_FILE="$STATE_DIR/activity.log"
 LOCK_DIR="$STATE_DIR/.lock"
+STALE_CLAIM_SECONDS="${AGENT_WORK_STALE_SECONDS:-7200}"
 
 usage() {
 	cat <<'EOF'
 Usage:
   .agents/coordination/agent-work.sh init
-  .agents/coordination/agent-work.sh status
+  .agents/coordination/agent-work.sh status [--json] [--no-render]
   .agents/coordination/agent-work.sh claim <agent-id> <task> <file> [<file> ...]
   .agents/coordination/agent-work.sh heartbeat <agent-id> <note>
   .agents/coordination/agent-work.sh release <agent-id> <file> [<file> ...]
@@ -39,6 +40,47 @@ repo_path() {
 			;;
 	esac
 	printf "%s" "$path"
+}
+
+date_to_epoch() {
+	ts=$1
+	epoch=$(date -u -j -f "%Y-%m-%dT%H:%M:%SZ" "$ts" "+%s" 2>/dev/null || true)
+	if [ -z "$epoch" ]; then
+		epoch=$(date -u -d "$ts" "+%s" 2>/dev/null || true)
+	fi
+	printf "%s" "$epoch"
+}
+
+validate_claim_path() {
+	raw_path=$1
+	path=$(repo_path "$raw_path")
+	case "$path" in
+		""|"-"|"--"|".")
+			echo "Invalid claim path '$raw_path': claim exact repo file paths only." >&2
+			return 1
+			;;
+		-*)
+			echo "Invalid claim path '$raw_path': paths that look like flags are not allowed." >&2
+			return 1
+			;;
+		/*)
+			echo "Invalid claim path '$raw_path': path is outside this repo." >&2
+			return 1
+			;;
+		*[[:space:]]*)
+			echo "Invalid claim path '$raw_path': whitespace is not allowed in claim paths." >&2
+			return 1
+			;;
+		*".."*|*"*"*|*"?"*|*"["*|*"]"*|*"**"*)
+			echo "Invalid claim path '$raw_path': parent traversal and globs are not allowed." >&2
+			return 1
+			;;
+		*/)
+			echo "Invalid claim path '$raw_path': claim files, not directories." >&2
+			return 1
+			;;
+	esac
+	return 0
 }
 
 acquire_lock() {
@@ -81,8 +123,96 @@ join_files() {
 	printf "%s" "$out"
 }
 
+status_json() {
+	now=$(timestamp)
+	printf "{\n"
+	printf "  \"generated_at\": \"%s\",\n" "$now"
+	printf "  \"progress_file\": \"%s\",\n" "$PROGRESS_FILE"
+	printf "  \"claims_file\": \"%s\",\n" "$CLAIMS_FILE"
+	printf "  \"log_file\": \"%s\",\n" "$LOG_FILE"
+	printf "  \"active_claims\": [\n"
+	if [ -s "$CLAIMS_FILE" ]; then
+		awk -F '\t' '
+			function json(s) {
+				gsub(/\\/, "\\\\", s)
+				gsub(/"/, "\\\"", s)
+				gsub(/\r/, "\\r", s)
+				gsub(/\n/, "\\n", s)
+				gsub(/\t/, "\\t", s)
+				return "\"" s "\""
+			}
+			NF >= 5 {
+				note = ""
+				if (NF >= 6) {
+					note = $6
+				}
+				if (seen > 0) {
+					printf ",\n"
+				}
+				printf "    {\"file\": %s, \"agent\": %s, \"task\": %s, \"claimed_at\": %s, \"last_update\": %s, \"note\": %s}", json($1), json($2), json($3), json($4), json($5), json(note)
+				seen++
+			}
+		' "$CLAIMS_FILE"
+	fi
+	printf "\n  ],\n"
+	printf "  \"recent_activity\": [\n"
+	if [ -s "$LOG_FILE" ]; then
+		tail -n 30 "$LOG_FILE" | awk -F '\t' '
+			function json(s) {
+				gsub(/\\/, "\\\\", s)
+				gsub(/"/, "\\\"", s)
+				gsub(/\r/, "\\r", s)
+				gsub(/\n/, "\\n", s)
+				gsub(/\t/, "\\t", s)
+				return "\"" s "\""
+			}
+			NF >= 5 {
+				if (seen > 0) {
+					printf ",\n"
+				}
+				printf "    {\"time\": %s, \"action\": %s, \"agent\": %s, \"files\": %s, \"note\": %s}", json($1), json($2), json($3), json($4), json($5)
+				seen++
+			}
+		'
+	fi
+	printf "\n  ]\n"
+	printf "}\n"
+}
+
+status_cmd() {
+	output_json=0
+	render=1
+	while [ "$#" -gt 0 ]; do
+		case "$1" in
+			--json)
+				output_json=1
+				;;
+			--no-render)
+				render=0
+				;;
+			*)
+				usage >&2
+				exit 2
+				;;
+		esac
+		shift
+	done
+	if [ "$render" -eq 1 ]; then
+		render_progress
+	fi
+	if [ "$output_json" -eq 1 ]; then
+		status_json
+	elif [ -f "$PROGRESS_FILE" ]; then
+		cat "$PROGRESS_FILE"
+	else
+		echo "No rendered progress file. Run: .agents/coordination/agent-work.sh status" >&2
+		exit 2
+	fi
+}
+
 render_progress() {
 	now=$(timestamp)
+	now_epoch=$(date -u "+%s")
 	tmp="$STATE_DIR/WORK_PROGRESS.md.tmp.$$"
 	{
 		echo "# Agent Work Progress"
@@ -113,6 +243,27 @@ render_progress() {
 			' "$CLAIMS_FILE"
 		else
 			echo "No active claims."
+		fi
+		echo
+		echo "## Stale Claim Warnings"
+		echo
+		warnings=0
+		if [ -s "$CLAIMS_FILE" ]; then
+			tab=$(printf '\t')
+			while IFS="$tab" read -r file agent task claimed_at last_update note; do
+				last_epoch=$(date_to_epoch "$last_update")
+				if [ -n "$last_epoch" ]; then
+					age=$((now_epoch - last_epoch))
+					if [ "$age" -ge "$STALE_CLAIM_SECONDS" ]; then
+						warnings=$((warnings + 1))
+						age_minutes=$((age / 60))
+						printf -- '- `%s` owned by %s has no heartbeat for %s minutes. Last note: %s\n' "$file" "$agent" "$age_minutes" "$note"
+					fi
+				fi
+			done <"$CLAIMS_FILE"
+		fi
+		if [ "$warnings" -eq 0 ]; then
+			echo "No stale claims."
 		fi
 		echo
 		echo "## Recent Activity"
@@ -154,6 +305,9 @@ claim_cmd() {
 	shift 2
 	now=$(timestamp)
 	conflicts=
+	for raw_path in "$@"; do
+		validate_claim_path "$raw_path"
+	done
 	for raw_path in "$@"; do
 		path=$(sanitize "$(repo_path "$raw_path")")
 		owner=$(awk -F '\t' -v file="$path" -v agent="$agent" '$1 == file && $2 != agent { print $2; exit }' "$CLAIMS_FILE")
@@ -275,8 +429,7 @@ case "$cmd" in
 	status)
 		acquire_lock
 		ensure_state
-		render_progress
-		cat "$PROGRESS_FILE"
+		status_cmd "$@"
 		;;
 	claim)
 		acquire_lock

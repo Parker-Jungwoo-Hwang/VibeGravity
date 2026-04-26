@@ -26,7 +26,8 @@ responsibility:
 |---|---|
 | `cmd/server` | HTTP API process entrypoint only |
 | `cmd/worker` | background worker process entrypoint only |
-| `cmd/cli` | local operator CLI and doctor entrypoint |
+| `cmd/vibegravity` | primary local operator CLI and doctor entrypoint |
+| `cmd/cli` | compatibility CLI entrypoint during the binary rename |
 | `internal/core` | v1 service contract, DTOs, and domain records |
 | `internal/kernel` | concrete `core.VibeGravityService` composition over ingest and recall |
 | `internal/ingest` | `sync_turn()` normalization, validation, idempotent raw event writes, and job enqueueing |

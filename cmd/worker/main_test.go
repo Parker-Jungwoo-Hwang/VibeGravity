@@ -5,7 +5,7 @@
 // STATUS   : active
 // ------------------------------------------------------------
 // EXPORTS  : worker main composition tests
-// DEPENDS  : context, encoding/json, testing, time, internal/core, internal/reasoning
+// DEPENDS  : context, encoding/json, testing, time, internal/config, internal/core, internal/reasoning, internal/runtime
 // USED_BY  : go test ./...
 // ------------------------------------------------------------
 // AGENT_NOTE: Worker defaults may use mocked Codex bridge runners, not local text extraction or real Codex calls.
@@ -16,19 +16,28 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/parker-jungwoo-hwang/vibegravity/internal/config"
 	"github.com/parker-jungwoo-hwang/vibegravity/internal/core"
 	"github.com/parker-jungwoo-hwang/vibegravity/internal/reasoning"
+	"github.com/parker-jungwoo-hwang/vibegravity/internal/runtime"
 )
 
 func TestNewReasonerUsesMockedCodexBridgeWithoutLocalExtraction(t *testing.T) {
 	t.Parallel()
 
-	reasoner, err := newReasoner(nil)
+	logger := &testLogger{}
+	reasoner, err := runtime.NewReasoner(config.CodexConfig{}, nil, logger)
 	if err != nil {
-		t.Fatalf("newReasoner returned error: %v", err)
+		t.Fatalf("NewReasoner returned error: %v", err)
+	}
+	if logger.last == "" || !strings.Contains(logger.last, "MockCodexJSONClient") {
+		t.Fatalf("expected runtime log to identify MockCodexJSONClient, got %q", logger.last)
 	}
 
 	result, err := reasoner.ProcessTurn(context.Background(), workerStopLineEnvelope())
@@ -54,9 +63,9 @@ func TestNewReasonerIgnoresRealCodexEnvAndStaysMocked(t *testing.T) {
 	t.Setenv("VIBEGRAVITY_CODEX_ENDPOINT", "https://codex.invalid/should-not-be-called")
 	t.Setenv("VIBEGRAVITY_CODEX_MODEL", "real-codex-disabled-in-worker-defaults")
 
-	reasoner, err := newReasoner(nil)
+	reasoner, err := runtime.NewReasoner(config.LoadConfig().Codex, nil, &testLogger{})
 	if err != nil {
-		t.Fatalf("newReasoner returned error: %v", err)
+		t.Fatalf("NewReasoner returned error: %v", err)
 	}
 
 	result, err := reasoner.ProcessTurn(context.Background(), workerStopLineEnvelope())
@@ -72,6 +81,28 @@ func TestNewReasonerIgnoresRealCodexEnvAndStaysMocked(t *testing.T) {
 	if string(result.Stage2.Trace.MetadataJSON) != `{"client":"mock_codex_json_client"}` {
 		t.Fatalf("expected mocked bridge metadata, got %s", string(result.Stage2.Trace.MetadataJSON))
 	}
+}
+
+func TestNewReasonerRejectsExplicitRealCodexUntilClientExists(t *testing.T) {
+	t.Parallel()
+
+	_, err := runtime.NewReasoner(config.CodexConfig{
+		Enabled:    true,
+		ClientMode: config.CodexClientModeReal,
+		Endpoint:   "https://codex.invalid",
+		Model:      "codex-contract-test",
+	}, nil, &testLogger{})
+	if !errors.Is(err, core.ErrNotImplemented) {
+		t.Fatalf("explicit real Codex should be rejected until real client exists, got %v", err)
+	}
+}
+
+type testLogger struct {
+	last string
+}
+
+func (l *testLogger) Printf(format string, values ...any) {
+	l.last = fmt.Sprintf(format, values...)
 }
 
 func workerStopLineEnvelope() *reasoning.ProcessTurnEnvelope {

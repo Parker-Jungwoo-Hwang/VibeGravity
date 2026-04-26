@@ -24,10 +24,18 @@ import (
 
 // CodexConfig contains disabled-by-default reasoning bridge settings.
 type CodexConfig struct {
-	Enabled  bool
-	Endpoint string
-	Model    string
+	Enabled    bool
+	ClientMode string
+	Endpoint   string
+	Model      string
 }
+
+const (
+	// CodexClientModeMock keeps worker reasoning on the deterministic mocked bridge.
+	CodexClientModeMock = "mock"
+	// CodexClientModeReal is reserved for explicit future real Codex execution.
+	CodexClientModeReal = "real"
+)
 
 // Config contains settings shared by the server, worker, and CLI.
 type Config struct {
@@ -51,16 +59,17 @@ func LoadConfig() Config {
 		EmbeddingModel:    getEnv("VIBEGRAVITY_EMBEDDING_MODEL", "pending"),
 		EmbeddingDims:     getEnvAsInt("VIBEGRAVITY_EMBEDDING_DIMS", 0),
 		Codex: CodexConfig{
-			Enabled:  getEnvAsBool("VIBEGRAVITY_CODEX_ENABLED", false),
-			Endpoint: getEnv("VIBEGRAVITY_CODEX_ENDPOINT", ""),
-			Model:    getEnv("VIBEGRAVITY_CODEX_MODEL", ""),
+			Enabled:    getEnvAsBool("VIBEGRAVITY_CODEX_ENABLED", false),
+			ClientMode: getEnv("VIBEGRAVITY_CODEX_CLIENT", CodexClientModeMock),
+			Endpoint:   getEnv("VIBEGRAVITY_CODEX_ENDPOINT", ""),
+			Model:      getEnv("VIBEGRAVITY_CODEX_MODEL", ""),
 		},
 	}
 	return cfg
 }
 
 func getEnv(key, defaultVal string) string {
-	if val, ok := os.LookupEnv(key); ok {
+	if val, ok := os.LookupEnv(key); ok && val != "" {
 		return val
 	}
 	return defaultVal

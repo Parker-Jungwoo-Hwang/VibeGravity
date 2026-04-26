@@ -1,6 +1,6 @@
 You are the default Hermes profile reviewing the next VibeGravity implementation slice.
 
-Repo: /Users/parker/Documents/VibeGravity
+Repo: VibeGravity repository root
 
 Rules:
 - Do not mutate Hermes settings.

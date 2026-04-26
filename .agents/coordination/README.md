@@ -18,13 +18,51 @@ git-ignored so normal coding diffs do not fill up with heartbeat noise.
 Every agent must follow this loop before editing files:
 
 1. Read `.agents/coordination/WORK_PROGRESS.md`.
-2. Claim the exact files to edit before modifying them.
-3. Stop if another active agent already owns any of those files.
-4. Send heartbeats during long work or before widening scope.
-5. Release a file immediately when work on that file is done.
-6. Run verification and leave a result note or review packet when the lane ends.
+2. Read `.agents/workflows/quickstart.md`.
+3. Read the role file under `.agents/workflows/` when a role is assigned.
+4. Claim the exact files to edit before modifying them.
+5. Stop if another active agent already owns any of those files.
+6. Send heartbeats during long work or before requesting wider scope.
+7. Release a file immediately when work on that file is done.
+8. Run verification and leave a result note or review packet when the lane ends.
 
 Do not claim broad globs such as `internal/**`. Claim concrete file paths.
+The claim tool rejects flag-like paths such as `--`, broad globs, directory
+claims, parent traversal, and paths with whitespace.
+
+## Workflow Roles
+
+Workflow definitions live in:
+
+```text
+.agents/workflows/
+```
+
+Use `.agents/workflows/README.md` for the shared lane and handoff contract.
+
+Only the leader can approve lane widening.
+
+Only the leader can approve final synthesis.
+
+Quickstart is read-only. It may recommend a lane, but it must not claim files or
+edit the repo.
+
+Every saved handoff, review packet, role result, or synthesis packet must start
+with YAML front matter containing:
+
+- `agent_id`, `role`, `phase_id`, `lane_id`, `lane_type`
+- `claimed_files`, `reviewed_files`, `changed_files`
+- `gates_run`, `gates_skipped`, `skip_reasons`
+- `next_owner`
+
+Allowed lane types are:
+
+- `read_only_review`
+- `docs_only`
+- `tests_only`
+- `code_edit`
+- `integration_synthesis`
+- `release_readiness`
 
 ## Universal Prompt
 
@@ -36,7 +74,7 @@ If an operator gives an agent only this path, the expected behavior is to read
 the file and execute it immediately:
 
 ```text
-/Users/parker/Documents/VibeGravity/.agents/coordination/UNIVERSAL_AGENT_PROMPT.md
+.agents/coordination/UNIVERSAL_AGENT_PROMPT.md
 ```
 
 The agent should not ask what to do with that path.
@@ -56,6 +94,12 @@ View current claims and the recent activity log:
 
 ```bash
 .agents/coordination/agent-work.sh status
+```
+
+Get machine-readable current claims without rewriting `WORK_PROGRESS.md`:
+
+```bash
+.agents/coordination/agent-work.sh status --json --no-render
 ```
 
 Claim files before editing:
@@ -85,6 +129,9 @@ Mark an agent lane done and release all files owned by that agent:
 ## Collision Rules
 
 - If `claim` reports a conflict, do not edit that file.
+- If `status` reports a stale claim warning, treat it as a warning, not an
+  automatic release. A leader or operator decides whether stale ownership can be
+  cleared.
 - If two agents both need one hot file, one agent should finish and release it
   first, or the coordinator should split the lane differently.
 - Result docs under `docs/review-packets/` should still be used for completed

@@ -1,7 +1,6 @@
 # Code Header Policy
 
-This policy turns `/Users/parker/Downloads/code_header_templates.md` into the
-repo-local rule for VibeGravity source files.
+This policy captures the repo-local rule for VibeGravity source files.
 
 ## Default
 

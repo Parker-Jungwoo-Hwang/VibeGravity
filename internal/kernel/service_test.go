@@ -21,20 +21,24 @@ import (
 	"testing"
 
 	"github.com/parker-jungwoo-hwang/vibegravity/internal/core"
+	"github.com/parker-jungwoo-hwang/vibegravity/internal/corrections"
+	"github.com/parker-jungwoo-hwang/vibegravity/internal/documents"
+	"github.com/parker-jungwoo-hwang/vibegravity/internal/plans"
+	"github.com/parker-jungwoo-hwang/vibegravity/internal/timeline"
 )
 
 func TestAddDocumentStoresDocumentAndChunks(t *testing.T) {
 	t.Parallel()
 
 	documents := &fakeDocumentStore{}
-	service := &Service{documents: documents}
+	service := newTestService(t, Dependencies{Documents: documents})
 
 	resp, err := service.AddDocument(context.Background(), &core.AddDocumentRequest{
 		TenantID:    "tenant_1",
 		WorkspaceID: "workspace_1",
 		Source:      "operator_upload",
 		Title:       "Runtime Notes",
-		Content:     strings.Repeat("A", documentChunkMaxRunes+5),
+		Content:     strings.Repeat("A", 1805),
 	})
 	if err != nil {
 		t.Fatalf("AddDocument returned error: %v", err)
@@ -61,7 +65,7 @@ func TestAddDocumentDoesNotReportSuccessWhenAtomicStoreFails(t *testing.T) {
 
 	storeErr := errors.New("chunk insert failed")
 	documents := &fakeDocumentStore{atomicErr: storeErr}
-	service := &Service{documents: documents}
+	service := newTestService(t, Dependencies{Documents: documents})
 
 	resp, err := service.AddDocument(context.Background(), &core.AddDocumentRequest{
 		TenantID:    "tenant_1",
@@ -85,7 +89,7 @@ func TestUpdatePlanDelegatesPatchAndItems(t *testing.T) {
 	t.Parallel()
 
 	plans := &fakePlanStore{}
-	service := &Service{plans: plans}
+	service := newTestService(t, Dependencies{Plans: plans})
 	title := "Ship Work Pack 03"
 	status := "active"
 
@@ -116,11 +120,11 @@ func TestUpdatePlanDelegatesPatchAndItems(t *testing.T) {
 func TestCorrectMemoryValidatesRequiredFields(t *testing.T) {
 	t.Parallel()
 
-	service := &Service{
-		memories:    &fakeKernelMemoryStore{},
-		corrections: &fakeCorrectionStore{},
-		jobs:        &fakeCorrectionApplyJobStore{},
-	}
+	service := newTestService(t, Dependencies{
+		Memories:    &fakeKernelMemoryStore{},
+		Corrections: &fakeCorrectionStore{},
+		Jobs:        &fakeCorrectionApplyJobStore{},
+	})
 
 	_, err := service.CorrectMemory(context.Background(), &core.CorrectMemoryRequest{
 		TenantID:       "tenant_1",
@@ -138,11 +142,11 @@ func TestCorrectMemoryValidatesRequiredFields(t *testing.T) {
 func TestCorrectMemoryReturnsNotFoundForMissingMemory(t *testing.T) {
 	t.Parallel()
 
-	service := &Service{
-		memories:    &fakeKernelMemoryStore{err: core.ErrNotFound},
-		corrections: &fakeCorrectionStore{},
-		jobs:        &fakeCorrectionApplyJobStore{},
-	}
+	service := newTestService(t, Dependencies{
+		Memories:    &fakeKernelMemoryStore{err: core.ErrNotFound},
+		Corrections: &fakeCorrectionStore{},
+		Jobs:        &fakeCorrectionApplyJobStore{},
+	})
 
 	_, err := service.CorrectMemory(context.Background(), validCorrectionRequest())
 	if !errors.Is(err, core.ErrNotFound) {
@@ -154,11 +158,12 @@ func TestCorrectMemoryRecordsRawEventAndCorrection(t *testing.T) {
 	t.Parallel()
 
 	corrections := &fakeCorrectionStore{}
-	service := &Service{
-		memories:    &fakeKernelMemoryStore{memory: validCorrectionTargetMemory()},
-		corrections: corrections,
-		jobs:        &fakeCorrectionApplyJobStore{},
-	}
+	memories := &fakeKernelMemoryStore{memory: validCorrectionTargetMemory()}
+	service := newTestService(t, Dependencies{
+		Memories:    memories,
+		Corrections: corrections,
+		Jobs:        &fakeCorrectionApplyJobStore{},
+	})
 
 	resp, err := service.CorrectMemory(context.Background(), validCorrectionRequest())
 	if err != nil {
@@ -186,7 +191,6 @@ func TestCorrectMemoryRecordsRawEventAndCorrection(t *testing.T) {
 	if corrections.correction == nil || corrections.correction.Status != "recorded" {
 		t.Fatalf("correction artifact should be recorded before supersession: %#v", corrections.correction)
 	}
-	memories := service.memories.(*fakeKernelMemoryStore)
 	if memories.updateMemory == nil || memories.updateTrace == nil || memories.updateEdge == nil {
 		t.Fatalf("correction did not apply graph supersession: memory=%#v trace=%#v edge=%#v", memories.updateMemory, memories.updateTrace, memories.updateEdge)
 	}
@@ -224,11 +228,11 @@ func TestCorrectMemoryIdempotentRetryReturnsRecordedArtifact(t *testing.T) {
 			Status:         "recorded",
 		},
 	}
-	service := &Service{
-		memories:    &fakeKernelMemoryStore{memory: validCorrectionTargetMemory()},
-		corrections: corrections,
-		jobs:        &fakeCorrectionApplyJobStore{},
-	}
+	service := newTestService(t, Dependencies{
+		Memories:    &fakeKernelMemoryStore{memory: validCorrectionTargetMemory()},
+		Corrections: corrections,
+		Jobs:        &fakeCorrectionApplyJobStore{},
+	})
 
 	resp, err := service.CorrectMemory(context.Background(), validCorrectionRequest())
 	if err != nil {
@@ -259,11 +263,11 @@ func TestCorrectMemoryIdempotentRetryBypassesNonLatestTargetPrecheck(t *testing.
 			Status:         "applied",
 		},
 	}
-	service := &Service{
-		memories:    &fakeKernelMemoryStore{memory: target},
-		corrections: corrections,
-		jobs:        &fakeCorrectionApplyJobStore{},
-	}
+	service := newTestService(t, Dependencies{
+		Memories:    &fakeKernelMemoryStore{memory: target},
+		Corrections: corrections,
+		Jobs:        &fakeCorrectionApplyJobStore{},
+	})
 
 	resp, err := service.CorrectMemory(context.Background(), validCorrectionRequest())
 	if err != nil {
@@ -291,11 +295,11 @@ func TestCorrectMemoryRejectsReusedIdempotencyKeyWithDifferentEvidence(t *testin
 			Status:         "recorded",
 		},
 	}
-	service := &Service{
-		memories:    &fakeKernelMemoryStore{memory: validCorrectionTargetMemory()},
-		corrections: corrections,
-		jobs:        &fakeCorrectionApplyJobStore{},
-	}
+	service := newTestService(t, Dependencies{
+		Memories:    &fakeKernelMemoryStore{memory: validCorrectionTargetMemory()},
+		Corrections: corrections,
+		Jobs:        &fakeCorrectionApplyJobStore{},
+	})
 
 	_, err := service.CorrectMemory(context.Background(), validCorrectionRequest())
 	if !errors.Is(err, core.ErrConflict) {
@@ -310,11 +314,11 @@ func TestCorrectMemoryRejectsNonLatestTargetBeforeRecordingCorrection(t *testing
 	target.Status = core.MemoryStatusSuperseded
 	target.LatestFlag = false
 	corrections := &fakeCorrectionStore{}
-	service := &Service{
-		memories:    &fakeKernelMemoryStore{memory: target},
-		corrections: corrections,
-		jobs:        &fakeCorrectionApplyJobStore{},
-	}
+	service := newTestService(t, Dependencies{
+		Memories:    &fakeKernelMemoryStore{memory: target},
+		Corrections: corrections,
+		Jobs:        &fakeCorrectionApplyJobStore{},
+	})
 
 	_, err := service.CorrectMemory(context.Background(), validCorrectionRequest())
 	if !errors.Is(err, core.ErrConflict) {
@@ -332,11 +336,11 @@ func TestCorrectMemoryRejectsPrivateTargetWithoutEntityVisibility(t *testing.T) 
 	target.Scope = core.MemoryScopeAgentPrivate
 	target.OwnerEntityID = "agent:hermes-main"
 	corrections := &fakeCorrectionStore{}
-	service := &Service{
-		memories:    &fakeKernelMemoryStore{memory: target},
-		corrections: corrections,
-		jobs:        &fakeCorrectionApplyJobStore{},
-	}
+	service := newTestService(t, Dependencies{
+		Memories:    &fakeKernelMemoryStore{memory: target},
+		Corrections: corrections,
+		Jobs:        &fakeCorrectionApplyJobStore{},
+	})
 
 	req := validCorrectionRequest()
 	_, err := service.CorrectMemory(context.Background(), req)
@@ -354,11 +358,11 @@ func TestCorrectMemoryAllowsPrivateTargetForVisibleOwner(t *testing.T) {
 	target := validCorrectionTargetMemory()
 	target.Scope = core.MemoryScopeAgentPrivate
 	target.OwnerEntityID = "agent:hermes-main"
-	service := &Service{
-		memories:    &fakeKernelMemoryStore{memory: target},
-		corrections: &fakeCorrectionStore{},
-		jobs:        &fakeCorrectionApplyJobStore{},
-	}
+	service := newTestService(t, Dependencies{
+		Memories:    &fakeKernelMemoryStore{memory: target},
+		Corrections: &fakeCorrectionStore{},
+		Jobs:        &fakeCorrectionApplyJobStore{},
+	})
 
 	req := validCorrectionRequest()
 	req.EntityID = "agent:hermes-main"
@@ -379,11 +383,11 @@ func TestCorrectMemoryRejectsGroupSharedTargetWithoutVisibleGroup(t *testing.T) 
 	target.Scope = core.MemoryScopeGroupShared
 	target.GroupID = &groupID
 	corrections := &fakeCorrectionStore{}
-	service := &Service{
-		memories:    &fakeKernelMemoryStore{memory: target},
-		corrections: corrections,
-		jobs:        &fakeCorrectionApplyJobStore{},
-	}
+	service := newTestService(t, Dependencies{
+		Memories:    &fakeKernelMemoryStore{memory: target},
+		Corrections: corrections,
+		Jobs:        &fakeCorrectionApplyJobStore{},
+	})
 
 	req := validCorrectionRequest()
 	req.VisibleGroupIDs = []string{"group_ops"}
@@ -403,11 +407,11 @@ func TestCorrectMemoryAllowsGroupSharedTargetForVisibleGroup(t *testing.T) {
 	target := validCorrectionTargetMemory()
 	target.Scope = core.MemoryScopeGroupShared
 	target.GroupID = &groupID
-	service := &Service{
-		memories:    &fakeKernelMemoryStore{memory: target},
-		corrections: &fakeCorrectionStore{},
-		jobs:        &fakeCorrectionApplyJobStore{},
-	}
+	service := newTestService(t, Dependencies{
+		Memories:    &fakeKernelMemoryStore{memory: target},
+		Corrections: &fakeCorrectionStore{},
+		Jobs:        &fakeCorrectionApplyJobStore{},
+	})
 
 	req := validCorrectionRequest()
 	req.VisibleGroupIDs = []string{"group_design"}
@@ -425,11 +429,11 @@ func TestCorrectMemoryDoesNotReportSuccessWhenSupersessionFails(t *testing.T) {
 
 	storeErr := errors.New("supersession failed")
 	memories := &fakeKernelMemoryStore{memory: validCorrectionTargetMemory(), updateErr: storeErr}
-	service := &Service{
-		memories:    memories,
-		corrections: &fakeCorrectionStore{},
-		jobs:        &fakeCorrectionApplyJobStore{},
-	}
+	service := newTestService(t, Dependencies{
+		Memories:    memories,
+		Corrections: &fakeCorrectionStore{},
+		Jobs:        &fakeCorrectionApplyJobStore{},
+	})
 
 	resp, err := service.CorrectMemory(context.Background(), validCorrectionRequest())
 	if !errors.Is(err, storeErr) {
@@ -445,11 +449,11 @@ func TestCorrectMemoryUsesStableCorrectionApplyJobForSupersession(t *testing.T) 
 
 	jobs := &fakeCorrectionApplyJobStore{}
 	memories := &fakeKernelMemoryStore{memory: validCorrectionTargetMemory()}
-	service := &Service{
-		memories:    memories,
-		corrections: &fakeCorrectionStore{},
-		jobs:        jobs,
-	}
+	service := newTestService(t, Dependencies{
+		Memories:    memories,
+		Corrections: &fakeCorrectionStore{},
+		Jobs:        jobs,
+	})
 
 	_, err := service.CorrectMemory(context.Background(), validCorrectionRequest())
 	if err != nil {
@@ -472,11 +476,11 @@ func TestCorrectMemoryDoesNotApplySupersessionWhenCorrectionApplyJobFails(t *tes
 
 	jobErr := errors.New("job insert failed")
 	memories := &fakeKernelMemoryStore{memory: validCorrectionTargetMemory()}
-	service := &Service{
-		memories:    memories,
-		corrections: &fakeCorrectionStore{},
-		jobs:        &fakeCorrectionApplyJobStore{err: jobErr},
-	}
+	service := newTestService(t, Dependencies{
+		Memories:    memories,
+		Corrections: &fakeCorrectionStore{},
+		Jobs:        &fakeCorrectionApplyJobStore{err: jobErr},
+	})
 
 	resp, err := service.CorrectMemory(context.Background(), validCorrectionRequest())
 	if !errors.Is(err, jobErr) {
@@ -494,7 +498,7 @@ func TestGetTimelineDefaultsScopesLimitAndDelegates(t *testing.T) {
 	t.Parallel()
 
 	timeline := &fakeTimelineStore{}
-	service := &Service{timeline: timeline}
+	service := newTestService(t, Dependencies{Timeline: timeline})
 
 	resp, err := service.GetTimeline(context.Background(), &core.GetTimelineRequest{
 		TenantID:    "tenant_1",
@@ -507,7 +511,7 @@ func TestGetTimelineDefaultsScopesLimitAndDelegates(t *testing.T) {
 	if resp == nil || len(resp.Items) != 1 || resp.Items[0].ID != "tl_1" {
 		t.Fatalf("unexpected timeline response: %#v", resp)
 	}
-	if timeline.req == nil || timeline.req.Limit != timelineDefaultLimit {
+	if timeline.req == nil || timeline.req.Limit != 50 {
 		t.Fatalf("timeline request was not defaulted: %#v", timeline.req)
 	}
 	wantScopes := []core.MemoryScope{
@@ -523,7 +527,7 @@ func TestGetTimelineDefaultsScopesLimitAndDelegates(t *testing.T) {
 func TestGetTimelineRejectsInvalidScopeAndLimit(t *testing.T) {
 	t.Parallel()
 
-	service := &Service{timeline: &fakeTimelineStore{}}
+	service := newTestService(t, Dependencies{Timeline: &fakeTimelineStore{}})
 
 	_, err := service.GetTimeline(context.Background(), &core.GetTimelineRequest{
 		TenantID:    "tenant_1",
@@ -539,7 +543,7 @@ func TestGetTimelineRejectsInvalidScopeAndLimit(t *testing.T) {
 		TenantID:    "tenant_1",
 		WorkspaceID: "workspace_1",
 		EntityID:    "agent:hermes-main",
-		Limit:       timelineMaxLimit + 1,
+		Limit:       101,
 	})
 	if !errors.Is(err, core.ErrInvalidArgument) {
 		t.Fatalf("expected invalid limit error, got %v", err)
@@ -550,7 +554,7 @@ func TestGetTimelineExcludesGroupSharedUntilMembershipFiltering(t *testing.T) {
 	t.Parallel()
 
 	timeline := &fakeTimelineStore{}
-	service := &Service{timeline: timeline}
+	service := newTestService(t, Dependencies{Timeline: timeline})
 
 	_, err := service.GetTimeline(context.Background(), &core.GetTimelineRequest{
 		TenantID:    "tenant_1",
@@ -574,7 +578,7 @@ func TestExplainMemoryDelegatesVisibilityFields(t *testing.T) {
 	t.Parallel()
 
 	memories := &fakeKernelMemoryStore{}
-	service := &Service{memories: memories}
+	service := newTestService(t, Dependencies{Memories: memories})
 
 	_, err := service.ExplainMemory(context.Background(), &core.ExplainMemoryRequest{
 		TenantID:        "tenant_1",
@@ -602,6 +606,19 @@ func validCorrectionRequest() *core.CorrectMemoryRequest {
 		OperatorID:     "operator_1",
 		IdempotencyKey: "correction_1",
 		CorrectionText: "Use the newer fact.",
+	}
+}
+
+func newTestService(t *testing.T, deps Dependencies) *Service {
+	t.Helper()
+	return &Service{
+		recall:      deps.Recall,
+		notes:       deps.Notes,
+		memories:    deps.Memories,
+		documents:   documents.NewService(deps.Documents),
+		plans:       plans.NewService(deps.Plans),
+		corrections: corrections.NewService(deps.Memories, deps.Corrections, deps.Jobs),
+		timeline:    timeline.NewService(deps.Timeline),
 	}
 }
 

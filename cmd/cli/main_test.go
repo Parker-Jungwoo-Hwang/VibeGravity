@@ -16,10 +16,16 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
+	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/parker-jungwoo-hwang/vibegravity/internal/config"
 	"github.com/parker-jungwoo-hwang/vibegravity/internal/core"
 )
 
@@ -178,7 +184,7 @@ func TestRunCLIRequeuesBlockedJob(t *testing.T) {
 	store := &fakeBlockedJobStore{}
 	var out bytes.Buffer
 
-	code := runCLI(context.Background(), []string{"jobs", "requeue-blocked", "job_blocked_1"}, nil, &out, fakeStoreFactory(store), fakeServiceFactory(&fakeCLIService{}))
+	code := runCLI(context.Background(), []string{"jobs", "requeue-blocked", "job_blocked_1", "--reason", "apply support landed", "--yes"}, nil, &out, fakeStoreFactory(store), fakeServiceFactory(&fakeCLIService{}))
 
 	if code != 0 {
 		t.Fatalf("expected exit code 0, got %d; output: %s", code, out.String())
@@ -186,8 +192,66 @@ func TestRunCLIRequeuesBlockedJob(t *testing.T) {
 	if store.requeuedJobID != "job_blocked_1" {
 		t.Fatalf("expected job_blocked_1 to be requeued, got %q", store.requeuedJobID)
 	}
+	if store.requeueReason != "apply support landed" {
+		t.Fatalf("expected requeue reason to be recorded, got %q", store.requeueReason)
+	}
 	if !strings.Contains(out.String(), "requeued blocked job job_blocked_1") {
 		t.Fatalf("unexpected output: %s", out.String())
+	}
+}
+
+func TestRunCLIRequeueBlockedDryRunDoesNotOpenStore(t *testing.T) {
+	t.Parallel()
+
+	store := &fakeBlockedJobStore{}
+	var out bytes.Buffer
+
+	code := runCLI(context.Background(), []string{"jobs", "requeue-blocked", "job_blocked_1", "--reason", "checking recovery", "--dry-run"}, nil, &out, fakeStoreFactory(store), fakeServiceFactory(&fakeCLIService{}))
+
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d; output: %s", code, out.String())
+	}
+	if store.requeuedJobID != "" {
+		t.Fatalf("dry-run must not requeue, got %q", store.requeuedJobID)
+	}
+	output := out.String()
+	if !strings.Contains(output, "dry run: would requeue blocked job job_blocked_1") || !strings.Contains(output, "reason: checking recovery") {
+		t.Fatalf("unexpected dry-run output: %s", output)
+	}
+}
+
+func TestRunCLIRequeueBlockedAcceptsInteractiveConfirmation(t *testing.T) {
+	t.Parallel()
+
+	store := &fakeBlockedJobStore{}
+	var out bytes.Buffer
+
+	code := runCLI(context.Background(), []string{"jobs", "requeue-blocked", "job_blocked_1"}, strings.NewReader("job_blocked_1\n"), &out, fakeStoreFactory(store), fakeServiceFactory(&fakeCLIService{}))
+
+	if code != 0 {
+		t.Fatalf("expected exit code 0, got %d; output: %s", code, out.String())
+	}
+	if store.requeuedJobID != "job_blocked_1" {
+		t.Fatalf("expected confirmed job to be requeued, got %q", store.requeuedJobID)
+	}
+}
+
+func TestRunCLIRequeueBlockedRejectsMissingConfirmation(t *testing.T) {
+	t.Parallel()
+
+	store := &fakeBlockedJobStore{}
+	var out bytes.Buffer
+
+	code := runCLI(context.Background(), []string{"jobs", "requeue-blocked", "job_blocked_1"}, strings.NewReader("nope\n"), &out, fakeStoreFactory(store), fakeServiceFactory(&fakeCLIService{}))
+
+	if code == 0 {
+		t.Fatalf("expected non-zero exit without confirmation")
+	}
+	if store.requeuedJobID != "" {
+		t.Fatalf("unconfirmed requeue must not mutate, got %q", store.requeuedJobID)
+	}
+	if !strings.Contains(out.String(), "requeue canceled") {
+		t.Fatalf("expected cancellation message, got: %s", out.String())
 	}
 }
 
@@ -211,13 +275,41 @@ func TestRunCLIReportsRequeueStoreError(t *testing.T) {
 	store := &fakeBlockedJobStore{requeueErr: core.ErrNotFound}
 	var out bytes.Buffer
 
-	code := runCLI(context.Background(), []string{"jobs", "requeue-blocked", "missing_job"}, nil, &out, fakeStoreFactory(store), fakeServiceFactory(&fakeCLIService{}))
+	code := runCLI(context.Background(), []string{"jobs", "requeue-blocked", "missing_job", "--yes"}, nil, &out, fakeStoreFactory(store), fakeServiceFactory(&fakeCLIService{}))
 
 	if code == 0 {
 		t.Fatalf("expected non-zero exit for missing blocked job")
 	}
 	if !strings.Contains(out.String(), "blocked job not found") {
 		t.Fatalf("expected not found message, got: %s", out.String())
+	}
+}
+
+func TestRunCLIDoctorStrictJSONSeparatesRequiredAndEmbeddingFailures(t *testing.T) {
+	t.Setenv("VIBEGRAVITY_DB_URL", "postgres://%")
+	t.Setenv("VIBEGRAVITY_MIGRATION_PATH", t.TempDir())
+	t.Setenv("VIBEGRAVITY_EMBEDDING_ENDPOINT", "http://127.0.0.1:1")
+	t.Setenv("VIBEGRAVITY_EMBEDDING_MODEL", "pending")
+	t.Setenv("VIBEGRAVITY_EMBEDDING_DIMS", "0")
+	var out bytes.Buffer
+
+	code := runCLI(context.Background(), []string{"doctor", "--strict", "--json"}, strings.NewReader(""), &out, fakeStoreFactory(&fakeBlockedJobStore{}), fakeServiceFactory(&fakeCLIService{}))
+
+	if code != 1 {
+		t.Fatalf("expected strict doctor to fail, got %d; output: %s", code, out.String())
+	}
+	output := out.String()
+	for _, want := range []string{
+		`"strict": true`,
+		`"name": "database"`,
+		`"name": "embedding_endpoint"`,
+		`"name": "embedding_model"`,
+		`"name": "embedding_dims"`,
+		`"status": "fail"`,
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected doctor JSON to contain %q, got: %s", want, output)
+		}
 	}
 }
 
@@ -282,11 +374,172 @@ func TestRunCLIHermesBootstrapPrintsRegistrationCommand(t *testing.T) {
 	}
 }
 
+func TestRunCLIUsageStartsWithQuickstart(t *testing.T) {
+	t.Parallel()
+
+	var out bytes.Buffer
+	code := runCLI(context.Background(), nil, strings.NewReader(""), &out, fakeStoreFactory(&fakeBlockedJobStore{}), fakeServiceFactory(&fakeCLIService{}))
+
+	if code == 0 {
+		t.Fatalf("expected usage exit code")
+	}
+	if !strings.HasPrefix(out.String(), "처음이면 quickstart 실행: vibegravity quickstart\n") {
+		t.Fatalf("usage should start with quickstart guidance, got: %s", out.String())
+	}
+}
+
+func TestRunCLIRejectsUnknownCommand(t *testing.T) {
+	t.Parallel()
+
+	var out bytes.Buffer
+	code := runCLI(context.Background(), []string{"unknown-command"}, strings.NewReader(""), &out, fakeStoreFactory(&fakeBlockedJobStore{}), fakeServiceFactory(&fakeCLIService{}))
+
+	if code == 0 {
+		t.Fatalf("expected non-zero exit code for unknown command")
+	}
+	if !strings.Contains(out.String(), "Unknown command: unknown-command") {
+		t.Fatalf("expected unknown command output, got: %s", out.String())
+	}
+}
+
+func TestRunDoctorReturnsFailureWhenDatabaseCheckFails(t *testing.T) {
+	restore := overrideDoctorChecks(t, errors.New("database refused connection"), nil)
+	defer restore()
+	setDoctorEnv(t, t.TempDir(), "http://embedding.test/health", "local-embedding", "384")
+
+	var out bytes.Buffer
+	code := runDoctor(context.Background(), nil, &out)
+
+	if code != 1 {
+		t.Fatalf("expected doctor exit code 1 for required database failure, got %d; output: %s", code, out.String())
+	}
+	if !strings.Contains(out.String(), "[FAIL] database (required)") || !strings.Contains(out.String(), "database refused connection") {
+		t.Fatalf("expected database failure details, got: %s", out.String())
+	}
+}
+
+func TestRunDoctorStrictReturnsFailureWhenEmbeddingCheckFails(t *testing.T) {
+	restore := overrideDoctorChecks(t, nil, errors.New("embedding endpoint unavailable"))
+	defer restore()
+	setDoctorEnv(t, t.TempDir(), "http://embedding.test/health", "local-embedding", "384")
+
+	var out bytes.Buffer
+	code := runDoctor(context.Background(), []string{"--strict"}, &out)
+
+	if code != 1 {
+		t.Fatalf("expected doctor strict exit code 1 for embedding failure, got %d; output: %s", code, out.String())
+	}
+	output := out.String()
+	if !strings.Contains(output, "[FAIL] embedding_endpoint (required)") || !strings.Contains(output, "embedding endpoint unavailable") {
+		t.Fatalf("expected strict embedding failure details, got: %s", output)
+	}
+}
+
+func TestRunCLIGoldenEvalFailureReturnsNonZero(t *testing.T) {
+	t.Parallel()
+
+	fixture := filepath.Join(t.TempDir(), "failing_golden.json")
+	if err := os.WriteFile(fixture, []byte(`{
+  "scenarios": [
+    {
+      "name": "intentional golden failure",
+      "prefetch": {
+        "tenant_id": "tenant_1",
+        "workspace_id": "workspace_1",
+        "session_id": "session_1",
+        "actor_id": "agent:hermes-main",
+        "query": "missing",
+        "budget_tokens": 32
+      },
+      "expect": {"contains": ["this text will not be recalled"]}
+    }
+  ]
+}`), 0o600); err != nil {
+		t.Fatalf("write failing fixture: %v", err)
+	}
+	var out bytes.Buffer
+
+	code := runCLI(context.Background(), []string{"eval", "golden", "--path", fixture}, strings.NewReader(""), &out, fakeStoreFactory(&fakeBlockedJobStore{}), fakeServiceFactory(&fakeCLIService{}))
+
+	if code != 1 {
+		t.Fatalf("expected failing golden eval exit code 1, got %d; output: %s", code, out.String())
+	}
+	output := out.String()
+	if !strings.Contains(output, "FAIL\tintentional golden failure") || !strings.Contains(output, "Golden eval failed.") {
+		t.Fatalf("expected golden failure output, got: %s", output)
+	}
+}
+
+func TestBuiltCLIBinarySmoke(t *testing.T) {
+	t.Parallel()
+
+	root := filepath.Clean(filepath.Join("..", ".."))
+	bin := filepath.Join(t.TempDir(), "cli")
+	build := exec.Command("go", "build", "-ldflags", "-X main.version=test-smoke", "-o", bin, "./cmd/cli")
+	build.Dir = root
+	if output, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build cli binary: %v\n%s", err, output)
+	}
+
+	run := exec.Command(bin, "version")
+	output, err := run.CombinedOutput()
+	if err != nil {
+		t.Fatalf("run built binary smoke: %v\n%s", err, output)
+	}
+	if !strings.Contains(string(output), "vibegravity test-smoke") {
+		t.Fatalf("expected built binary version output, got: %s", output)
+	}
+}
+
+type fakeDoctorPool struct{}
+
+func (fakeDoctorPool) Close() {}
+
+type fakeDoctorHTTPClient struct {
+	err error
+}
+
+func (c fakeDoctorHTTPClient) Get(string) (*http.Response, error) {
+	if c.err != nil {
+		return nil, c.err
+	}
+	return &http.Response{Status: "200 OK", Body: http.NoBody}, nil
+}
+
+func overrideDoctorChecks(t *testing.T, dbErr error, embeddingErr error) func() {
+	t.Helper()
+	oldPool := newDoctorPool
+	oldHTTPClient := newDoctorHTTPClient
+	newDoctorPool = func(context.Context, config.Config) (doctorPool, error) {
+		if dbErr != nil {
+			return nil, dbErr
+		}
+		return fakeDoctorPool{}, nil
+	}
+	newDoctorHTTPClient = func() doctorHTTPGetter {
+		return fakeDoctorHTTPClient{err: embeddingErr}
+	}
+	return func() {
+		newDoctorPool = oldPool
+		newDoctorHTTPClient = oldHTTPClient
+	}
+}
+
+func setDoctorEnv(t *testing.T, migrationPath string, embeddingEndpoint string, embeddingModel string, embeddingDims string) {
+	t.Helper()
+	t.Setenv("VIBEGRAVITY_DB_URL", "postgres://doctor:secret@localhost:5432/vibegravity?sslmode=disable")
+	t.Setenv("VIBEGRAVITY_MIGRATION_PATH", migrationPath)
+	t.Setenv("VIBEGRAVITY_EMBEDDING_ENDPOINT", embeddingEndpoint)
+	t.Setenv("VIBEGRAVITY_EMBEDDING_MODEL", embeddingModel)
+	t.Setenv("VIBEGRAVITY_EMBEDDING_DIMS", embeddingDims)
+}
+
 type fakeBlockedJobStore struct {
 	jobs          []*core.IngestJob
 	listLimit     int
 	listErr       error
 	requeuedJobID string
+	requeueReason string
 	requeueErr    error
 	metrics       *core.JobBacklogMetrics
 	metricsReq    *core.JobBacklogMetricsRequest
@@ -301,8 +554,9 @@ func (s *fakeBlockedJobStore) ListBlockedJobs(_ context.Context, limit int) ([]*
 	return s.jobs, nil
 }
 
-func (s *fakeBlockedJobStore) RequeueBlockedJob(_ context.Context, jobID string) error {
+func (s *fakeBlockedJobStore) RequeueBlockedJob(_ context.Context, jobID string, reason string) error {
 	s.requeuedJobID = jobID
+	s.requeueReason = reason
 	return s.requeueErr
 }
 

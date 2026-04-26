@@ -17,6 +17,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -84,8 +85,10 @@ func TestServerToolSchemasExposeTrustLoopInputs(t *testing.T) {
 	assertRequiredInputsExact(t, byName["degraded_status"], "tenant_id", "workspace_id", "session_id", "actor_id")
 	assertRequiredInputsExact(t, byName["sync_turn"], "tenant_id", "workspace_id", "session_id", "actor_id", "idempotency_key", "turn_events")
 	assertRequiredInputsExact(t, byName["search_memory"], "tenant_id", "workspace_id")
+	assertRequiredInputsExact(t, byName["search_documents"], "tenant_id", "workspace_id")
 	assertRequiredInputsExact(t, byName["add_note"], "tenant_id", "workspace_id", "scope", "owner_entity_id", "text")
 	assertRequiredInputsExact(t, byName["create_plan"], "tenant_id", "workspace_id", "title", "scope", "owner_entity_id")
+	assertRequiredInputsExact(t, byName["update_plan"], "tenant_id", "workspace_id", "plan_id")
 	assertRequiredInputsExact(t, byName["correct_memory"], "tenant_id", "workspace_id", "memory_id", "operator_id", "idempotency_key", "correction_text")
 	assertRequiredInputsExact(t, byName["view_timeline"], "tenant_id", "workspace_id", "entity_id")
 	assertRequiredInputsExact(t, byName["explain_memory"], "tenant_id", "workspace_id", "memory_id")
@@ -110,6 +113,48 @@ func TestServerToolSchemasExposeTrustLoopInputs(t *testing.T) {
 	}
 	if _, ok := explainProps["visible_group_ids"]; !ok {
 		t.Fatalf("explain_memory schema should expose visible_group_ids for group visibility")
+	}
+}
+
+func TestServerRequiredToolSchemaMatchesServiceValidation(t *testing.T) {
+	t.Parallel()
+
+	server := newProtocolServer(t, newTestSurface(t, requiredFieldValidationService{}))
+	tools := server.protocolTools()
+	for _, tool := range tools {
+		required, ok := tool.InputSchema["required"].([]string)
+		if !ok || len(required) == 0 {
+			continue
+		}
+		validArgs := validToolArguments(tool.Name)
+		completeResp, respond := server.HandleMessage(context.Background(), callToolMessage(t, tool.Name, validArgs))
+		if !respond {
+			t.Fatalf("%s complete call did not produce a response", tool.Name)
+		}
+		var complete rpcResponseForTest
+		decodeJSONMessage(t, completeResp, &complete)
+		if complete.Error != nil || complete.Result.IsError {
+			t.Fatalf("%s complete call should pass service validation: %s", tool.Name, string(completeResp))
+		}
+		for _, field := range required {
+			args := validToolArguments(tool.Name)
+			delete(args, field)
+			raw, respond := server.HandleMessage(context.Background(), callToolMessage(t, tool.Name, args))
+			if !respond {
+				t.Fatalf("%s missing %s did not produce a response", tool.Name, field)
+			}
+			var envelope rpcResponseForTest
+			decodeJSONMessage(t, raw, &envelope)
+			if envelope.Error != nil {
+				t.Fatalf("%s missing %s should be a tool validation error, got protocol error: %s", tool.Name, field, string(raw))
+			}
+			if !envelope.Result.IsError {
+				t.Fatalf("%s missing %s should fail service validation: %s", tool.Name, field, string(raw))
+			}
+			if !strings.Contains(envelope.Result.Content[0].Text, field+" is required") {
+				t.Fatalf("%s missing %s returned wrong validation message: %s", tool.Name, field, string(raw))
+			}
+		}
 	}
 }
 
@@ -233,6 +278,61 @@ func assertRequiredInputsExact(t *testing.T, tool protocolTool, want ...string) 
 	}
 }
 
+func callToolMessage(t *testing.T, name string, arguments map[string]any) json.RawMessage {
+	t.Helper()
+
+	raw, err := json.Marshal(map[string]any{
+		"jsonrpc": "2.0",
+		"id":      "contract-" + name,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name":      name,
+			"arguments": arguments,
+		},
+	})
+	if err != nil {
+		t.Fatalf("marshal call tool message: %v", err)
+	}
+	return raw
+}
+
+func validToolArguments(name string) map[string]any {
+	base := map[string]any{
+		"tenant_id":    "tenant_1",
+		"workspace_id": "workspace_1",
+	}
+	switch name {
+	case "prefetch", "recall_preview", "degraded_status":
+		base["session_id"] = "session_1"
+		base["actor_id"] = "agent:hermes-main"
+	case "sync_turn":
+		base["session_id"] = "session_1"
+		base["actor_id"] = "agent:hermes-main"
+		base["idempotency_key"] = "turn_1"
+		base["turn_events"] = []map[string]any{{"event_kind": "message", "payload_json": map[string]any{}}}
+	case "add_note":
+		base["scope"] = string(core.MemoryScopeWorkspaceShared)
+		base["owner_entity_id"] = "agent:hermes-main"
+		base["text"] = "Keep Hermes first."
+	case "create_plan":
+		base["title"] = "Ship trust loop"
+		base["scope"] = string(core.MemoryScopeWorkspaceShared)
+		base["owner_entity_id"] = "agent:hermes-main"
+	case "update_plan":
+		base["plan_id"] = "plan_1"
+	case "correct_memory":
+		base["memory_id"] = "mem_1"
+		base["operator_id"] = "operator_1"
+		base["idempotency_key"] = "corr_1"
+		base["correction_text"] = "Use the corrected fact."
+	case "view_timeline":
+		base["entity_id"] = "agent:hermes-main"
+	case "explain_memory":
+		base["memory_id"] = "mem_1"
+	}
+	return base
+}
+
 type rpcResponseForTest struct {
 	JSONRPC string          `json:"jsonrpc"`
 	ID      json.RawMessage `json:"id,omitempty"`
@@ -249,4 +349,140 @@ type prefetchValidationService struct {
 func (s *prefetchValidationService) Prefetch(ctx context.Context, req *core.PrefetchRequest) (*core.PrefetchResponse, error) {
 	s.prefetchCalls++
 	return s.assembler.Prefetch(ctx, req)
+}
+
+type requiredFieldValidationService struct{}
+
+func (requiredFieldValidationService) Prefetch(_ context.Context, req *core.PrefetchRequest) (*core.PrefetchResponse, error) {
+	if err := requireToolFields(map[string]string{
+		"tenant_id":    req.TenantID,
+		"workspace_id": req.WorkspaceID,
+		"session_id":   req.SessionID,
+		"actor_id":     req.ActorID,
+	}); err != nil {
+		return nil, err
+	}
+	return &core.PrefetchResponse{Meta: core.RecallMeta{Freshness: "stored"}}, nil
+}
+
+func (requiredFieldValidationService) SyncTurn(_ context.Context, req *core.SyncTurnRequest) (*core.SyncTurnResponse, error) {
+	if err := requireToolFields(map[string]string{
+		"tenant_id":       req.TenantID,
+		"workspace_id":    req.WorkspaceID,
+		"session_id":      req.SessionID,
+		"actor_id":        req.ActorID,
+		"idempotency_key": req.IdempotencyKey,
+	}); err != nil {
+		return nil, err
+	}
+	if len(req.TurnEvents) == 0 {
+		return nil, fmt.Errorf("%w: turn_events is required", core.ErrInvalidArgument)
+	}
+	return &core.SyncTurnResponse{Status: "accepted"}, nil
+}
+
+func (requiredFieldValidationService) AddDocument(context.Context, *core.AddDocumentRequest) (*core.AddDocumentResponse, error) {
+	return &core.AddDocumentResponse{Status: "created"}, nil
+}
+
+func (requiredFieldValidationService) SearchMemories(_ context.Context, req *core.SearchMemoriesRequest) (*core.SearchMemoriesResponse, error) {
+	if err := requireToolFields(map[string]string{
+		"tenant_id":    req.TenantID,
+		"workspace_id": req.WorkspaceID,
+	}); err != nil {
+		return nil, err
+	}
+	return &core.SearchMemoriesResponse{}, nil
+}
+
+func (requiredFieldValidationService) SearchDocuments(_ context.Context, req *core.SearchDocumentsRequest) (*core.SearchDocumentsResponse, error) {
+	if err := requireToolFields(map[string]string{
+		"tenant_id":    req.TenantID,
+		"workspace_id": req.WorkspaceID,
+	}); err != nil {
+		return nil, err
+	}
+	return &core.SearchDocumentsResponse{}, nil
+}
+
+func (requiredFieldValidationService) AddNote(_ context.Context, req *core.AddNoteRequest) (*core.AddNoteResponse, error) {
+	if err := requireToolFields(map[string]string{
+		"tenant_id":       req.TenantID,
+		"workspace_id":    req.WorkspaceID,
+		"scope":           string(req.Scope),
+		"owner_entity_id": req.OwnerEntityID,
+		"text":            req.Text,
+	}); err != nil {
+		return nil, err
+	}
+	return &core.AddNoteResponse{Status: "created"}, nil
+}
+
+func (requiredFieldValidationService) CreatePlan(_ context.Context, req *core.CreatePlanRequest) (*core.CreatePlanResponse, error) {
+	if err := requireToolFields(map[string]string{
+		"tenant_id":       req.TenantID,
+		"workspace_id":    req.WorkspaceID,
+		"title":           req.Title,
+		"scope":           string(req.Scope),
+		"owner_entity_id": req.OwnerEntityID,
+	}); err != nil {
+		return nil, err
+	}
+	return &core.CreatePlanResponse{Status: "created"}, nil
+}
+
+func (requiredFieldValidationService) UpdatePlan(_ context.Context, req *core.UpdatePlanRequest) (*core.UpdatePlanResponse, error) {
+	if err := requireToolFields(map[string]string{
+		"tenant_id":    req.TenantID,
+		"workspace_id": req.WorkspaceID,
+		"plan_id":      req.PlanID,
+	}); err != nil {
+		return nil, err
+	}
+	return &core.UpdatePlanResponse{Status: "updated"}, nil
+}
+
+func (requiredFieldValidationService) CorrectMemory(_ context.Context, req *core.CorrectMemoryRequest) (*core.CorrectMemoryResponse, error) {
+	if err := requireToolFields(map[string]string{
+		"tenant_id":       req.TenantID,
+		"workspace_id":    req.WorkspaceID,
+		"memory_id":       req.MemoryID,
+		"operator_id":     req.OperatorID,
+		"idempotency_key": req.IdempotencyKey,
+		"correction_text": req.CorrectionText,
+	}); err != nil {
+		return nil, err
+	}
+	return &core.CorrectMemoryResponse{Status: "applied"}, nil
+}
+
+func (requiredFieldValidationService) GetTimeline(_ context.Context, req *core.GetTimelineRequest) (*core.GetTimelineResponse, error) {
+	if err := requireToolFields(map[string]string{
+		"tenant_id":    req.TenantID,
+		"workspace_id": req.WorkspaceID,
+		"entity_id":    req.EntityID,
+	}); err != nil {
+		return nil, err
+	}
+	return &core.GetTimelineResponse{}, nil
+}
+
+func (requiredFieldValidationService) ExplainMemory(_ context.Context, req *core.ExplainMemoryRequest) (*core.ExplainMemoryResponse, error) {
+	if err := requireToolFields(map[string]string{
+		"tenant_id":    req.TenantID,
+		"workspace_id": req.WorkspaceID,
+		"memory_id":    req.MemoryID,
+	}); err != nil {
+		return nil, err
+	}
+	return &core.ExplainMemoryResponse{MemoryID: req.MemoryID}, nil
+}
+
+func requireToolFields(fields map[string]string) error {
+	for name, value := range fields {
+		if strings.TrimSpace(value) == "" {
+			return fmt.Errorf("%w: %s is required", core.ErrInvalidArgument, name)
+		}
+	}
+	return nil
 }

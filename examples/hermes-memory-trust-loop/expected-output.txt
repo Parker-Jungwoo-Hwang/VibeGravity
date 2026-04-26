@@ -1,0 +1,6 @@
+PASS	demo initial recall shows rule plan and trust metadata	blocks=[pinned_note active_plan profile_static memory]	tokens=56	sources=[notes plans profile memories]
+PASS	demo explain shows recalled memory provenance	blocks=[explain_memory]	tokens=0	sources=[memory_trace]
+PASS	demo correction writes supersession	blocks=[update_memory]	tokens=0	sources=[memories memory_trace memory_edges]
+PASS	demo next recall uses correction	blocks=[pinned_note active_plan memory profile_static]	tokens=57	sources=[notes plans memories profile]
+PASS	demo private scope separation	blocks=[pinned_note active_plan profile_static memory]	tokens=57	sources=[notes plans profile memories]
+Hermes Memory demo eval passed.

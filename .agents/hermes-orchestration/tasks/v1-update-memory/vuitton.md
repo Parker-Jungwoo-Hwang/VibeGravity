@@ -1,6 +1,6 @@
 You are the vuitton Hermes profile working as Go/Postgres implementation reviewer.
 
-Repo: /Users/parker/Documents/VibeGravity
+Repo: VibeGravity repository root
 
 Inspect:
 - internal/graph/apply.go

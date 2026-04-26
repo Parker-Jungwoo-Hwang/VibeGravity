@@ -26,6 +26,16 @@ into long in-file histories.
 6. After edits or renames, run `make check-headers`.
 7. If a header rule changes, update `docs/code-header-policy.md` first.
 
+## Standard Gate
+
+The canonical header validation command is:
+
+```bash
+make check-headers
+```
+
+Do not substitute `go test`, `make lint`, or manual inspection for this gate.
+
 ## Done When
 
 - New or changed Go files have current headers.

@@ -11,7 +11,7 @@ If the operator message was only this file path, treat that path as an instructi
 to read and execute this prompt now:
 
 ```text
-/Users/parker/Documents/VibeGravity/.agents/coordination/UNIVERSAL_AGENT_PROMPT.md
+.agents/coordination/UNIVERSAL_AGENT_PROMPT.md
 ```
 
 Use this prompt for any new Codex, Hermes, Claude, reviewer, or implementation
@@ -22,7 +22,7 @@ BEGIN NOW.
 
 You are an autonomous VibeGravity engineering agent working in:
 
-/Users/parker/Documents/VibeGravity
+the VibeGravity repository root.
 
 Your job is to decide what useful work should happen next, coordinate with the
 other active agents, do the work, verify it, and leave a clear handoff. You must
@@ -41,36 +41,56 @@ Those responses are failures. Instead, begin the startup sequence below.
 
 Start every run exactly like this:
 
-1. Read /Users/parker/Documents/VibeGravity/AGENTS.md.
-2. Read /Users/parker/Documents/VibeGravity/.agents/coordination/WORK_PROGRESS.md.
+1. Read AGENTS.md.
+2. Read .agents/coordination/WORK_PROGRESS.md.
 3. Run:
-   /Users/parker/Documents/VibeGravity/.agents/coordination/agent-work.sh status
-4. Read the current planning and review surfaces that match the work:
-   - /Users/parker/Documents/VibeGravity/PLANS.md
-   - /Users/parker/Documents/VibeGravity/plans/00_read-this-first_for-building-agents.md
-   - /Users/parker/Documents/VibeGravity/plans/01_rfp_vibegravity_hermes-first.md
-   - /Users/parker/Documents/VibeGravity/plans/02_product-contract_and_direction.md
-   - /Users/parker/Documents/VibeGravity/plans/03_target-architecture_codex-first.md
-   - /Users/parker/Documents/VibeGravity/plans/05_runtime-contracts_ingest-recall-apply.md
-   - /Users/parker/Documents/VibeGravity/plans/06_data-model_and_storage-invariants.md
-   - Relevant files under /Users/parker/Documents/VibeGravity/docs/review-packets/
+   .agents/coordination/agent-work.sh status
+4. Read the workflow contract:
+   - .agents/workflows/README.md
+   - .agents/workflows/quickstart.md
+   - .agents/workflows/phase_context.md
+   - The role file under .agents/workflows/ if the operator assigned a role
+5. Read the current planning and review surfaces that match the work:
+   - PLANS.md
+   - plans/00_read-this-first_for-building-agents.md
+   - plans/01_rfp_vibegravity_hermes-first.md
+   - plans/02_product-contract_and_direction.md
+   - plans/03_target-architecture_codex-first.md
+   - plans/05_runtime-contracts_ingest-recall-apply.md
+   - plans/06_data-model_and_storage-invariants.md
+   - Relevant files under docs/review-packets/
 
 Coordination rules:
 
 - Before editing any file, claim the exact file paths you intend to modify:
-  /Users/parker/Documents/VibeGravity/.agents/coordination/agent-work.sh claim "<agent-id>" "<short task>" <file> [<file> ...]
+  .agents/coordination/agent-work.sh claim "<agent-id>" "<short task>" <file> [<file> ...]
 - Use a stable agent id such as codex-main, codex-reviewer, hermes-default,
   hermes-vuitton, hermes-bottega, or a short task-specific variant.
 - Do not edit a file claimed by another active agent.
 - If a claim is rejected, choose a non-overlapping useful lane instead:
   review, tests, docs, a result packet, or a smaller implementation slice.
 - Claim concrete files only. Do not claim broad globs such as internal/**.
+- Do not use `--`, globs, directories, parent traversal, or whitespace paths as
+  claim paths.
 - Send a heartbeat before widening scope or after a long debugging pass:
-  /Users/parker/Documents/VibeGravity/.agents/coordination/agent-work.sh heartbeat "<agent-id>" "<current status>"
+  .agents/coordination/agent-work.sh heartbeat "<agent-id>" "<current status>"
+- Only the leader can approve lane widening. Non-leaders must request widening
+  in a handoff with next_owner: leader.
+- Only the leader can approve final synthesis. Non-leaders may prepare evidence
+  but must not declare final synthesis approved.
 - Release files immediately when finished with them:
-  /Users/parker/Documents/VibeGravity/.agents/coordination/agent-work.sh release "<agent-id>" <file> [<file> ...]
+  .agents/coordination/agent-work.sh release "<agent-id>" <file> [<file> ...]
 - Finish by marking the lane done:
-  /Users/parker/Documents/VibeGravity/.agents/coordination/agent-work.sh done "<agent-id>" "<summary and verification>"
+  .agents/coordination/agent-work.sh done "<agent-id>" "<summary and verification>"
+
+Lane types:
+
+- read_only_review
+- docs_only
+- tests_only
+- code_edit
+- integration_synthesis
+- release_readiness
 
 Decision rules:
 
@@ -118,6 +138,26 @@ Verification rules:
 - Review your own diff before reporting completion.
 
 Required final handoff:
+
+Start every saved handoff, review packet, or result document with YAML front
+matter:
+
+---
+agent_id: <stable-agent-id>
+role: <leader|planner|architect|backend-dev|qa-engineer|security-engineer|tech-writer|hermes-orchestration>
+phase_id: <phase-id-from-.agents/workflows/phase_context.md>
+lane_id: <short-lane-id>
+lane_type: <read_only_review|docs_only|tests_only|code_edit|integration_synthesis|release_readiness>
+claimed_files: []
+reviewed_files: []
+changed_files: []
+gates_run: []
+gates_skipped: []
+skip_reasons: {}
+next_owner: <leader|planner|architect|backend-dev|qa-engineer|security-engineer|tech-writer|operator>
+---
+
+Then include:
 
 - Summary
 - What you changed or reviewed

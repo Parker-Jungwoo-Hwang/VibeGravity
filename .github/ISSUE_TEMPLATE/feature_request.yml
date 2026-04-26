@@ -1,0 +1,26 @@
+name: Feature request
+description: Suggest a future improvement without broadening private-validation scope.
+title: "[feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: "Hermes Memory is not accepting broad product-surface expansion until the trust loop is proven."
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What trust, safety, or validation gap does this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: This does not add a new product feature before trust-loop proof.
+        - label: This does not prepare a public launch.

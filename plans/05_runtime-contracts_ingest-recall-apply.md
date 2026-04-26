@@ -229,12 +229,15 @@ pipeline unless configuration, client construction, and failure behavior are all
 made explicit.
 
 Current worker wiring uses the explicit Stage 1 and Stage 2 Codex runner
-interfaces with a deterministic mocked `CodexJSONClient`. This replaces direct
-stub runner wiring while still making no network call and producing no local
-extraction. The mocked client exists only to exercise the real bridge request /
-response boundary until an actual Codex client, prompt builder, retry policy, and
-operator-facing failure mode are added behind the same `CodexJSONClient`
-interface.
+interfaces with a deterministic mocked `CodexJSONClient`. Runtime composition
+logs this as `MockCodexJSONClient` so operators do not confuse the bridge
+boundary with a real Codex call. This replaces direct stub runner wiring while
+still making no network call and producing no local extraction. The mocked
+client exists only to exercise the real bridge request / response boundary.
+Future real Codex execution must require explicit configuration:
+`VIBEGRAVITY_CODEX_ENABLED=true`, `VIBEGRAVITY_CODEX_CLIENT=real`, endpoint,
+model, real client construction, prompt builder, retry policy, and
+operator-facing failure mode behind the same `CodexJSONClient` interface.
 
 Codex runner responses must be strict structured JSON. Unknown top-level fields,
 trailing JSON, missing schema markers, non-object JSON fields such as
@@ -485,6 +488,12 @@ Current operator visibility:
 ### Embedding failure
 
 lexical fallback
+
+Current implementation note: `internal/embed` is reserved for the local
+embedding client, but this architecture-cleanup slice does not implement it.
+Recall and Stage 2 source preparation currently use store-backed lexical
+retrieval. Do not claim semantic/vector retrieval until endpoint/model/dims,
+embedding writes, and retrieval proof are wired and verified.
 reduced relevance
 service stays available
 

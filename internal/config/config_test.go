@@ -17,6 +17,7 @@ import "testing"
 
 func TestLoadConfigDisablesRealCodexByDefault(t *testing.T) {
 	t.Setenv("VIBEGRAVITY_CODEX_ENABLED", "")
+	t.Setenv("VIBEGRAVITY_CODEX_CLIENT", "")
 	t.Setenv("VIBEGRAVITY_CODEX_ENDPOINT", "")
 	t.Setenv("VIBEGRAVITY_CODEX_MODEL", "")
 
@@ -24,6 +25,9 @@ func TestLoadConfigDisablesRealCodexByDefault(t *testing.T) {
 
 	if cfg.Codex.Enabled {
 		t.Fatalf("real Codex must be disabled by default")
+	}
+	if cfg.Codex.ClientMode != CodexClientModeMock {
+		t.Fatalf("default Codex client mode must be mock, got %q", cfg.Codex.ClientMode)
 	}
 	if cfg.Codex.Endpoint != "" {
 		t.Fatalf("default Codex endpoint must be empty, got %q", cfg.Codex.Endpoint)
@@ -35,6 +39,7 @@ func TestLoadConfigDisablesRealCodexByDefault(t *testing.T) {
 
 func TestLoadConfigRequiresExplicitCodexEnablement(t *testing.T) {
 	t.Setenv("VIBEGRAVITY_CODEX_ENABLED", "true")
+	t.Setenv("VIBEGRAVITY_CODEX_CLIENT", "real")
 	t.Setenv("VIBEGRAVITY_CODEX_ENDPOINT", "https://codex.invalid")
 	t.Setenv("VIBEGRAVITY_CODEX_MODEL", "codex-contract-test")
 
@@ -42,6 +47,9 @@ func TestLoadConfigRequiresExplicitCodexEnablement(t *testing.T) {
 
 	if !cfg.Codex.Enabled {
 		t.Fatalf("explicit Codex enablement was not loaded")
+	}
+	if cfg.Codex.ClientMode != CodexClientModeReal {
+		t.Fatalf("unexpected Codex client mode: %q", cfg.Codex.ClientMode)
 	}
 	if cfg.Codex.Endpoint != "https://codex.invalid" {
 		t.Fatalf("unexpected Codex endpoint: %q", cfg.Codex.Endpoint)

@@ -52,6 +52,14 @@ gaps: `correction_apply` is allowed by the fresh migration, existing DBs get an
 `updates` index repair migration, correction idempotency now validates replay
 evidence before applying, correction artifacts are marked `applied` with the
 supersession transaction, and generated `bin/` binaries are not tracked.
+Runtime composition now lives in `internal/runtime`, so `cmd/server`,
+`cmd/cli`, `cmd/vibegravity`, and `cmd/worker` share service/worker wiring.
+`internal/kernel.Service` is a thin facade over dedicated corrections,
+documents, plans, and timeline application packages. The worker logs its
+mocked Codex bridge use explicitly; real Codex remains blocked unless future
+code adds an explicit real client behind `VIBEGRAVITY_CODEX_CLIENT=real`.
+Embedding implementation is deferred from this slice; current recall and Stage
+2 retrieval are lexical/store-backed.
 
 ## Active Review Packet
 
@@ -59,6 +67,8 @@ supersession transaction, and generated `bin/` binaries are not tracked.
 - `docs/review-packets/operator-visible-degraded-recall-freshness.md`
 - `docs/review-packets/gpt-pro-followup-contract-alignment.md`
 - `docs/review-packets/gpt-pro-followup-product-contract-alignment.md`
+- `docs/review-packets/architecture-runtime-cleanup.md`
+- `docs/packaging.md`
 
 ## Next Concrete Slice
 
@@ -88,7 +98,7 @@ Goal:
 Recently completed:
 
 - `internal/eval` now runs deterministic golden recall scenarios from
-  `tests/golden/replay_eval.json`, with `cli eval golden` and `make eval` as the
+  `tests/golden/replay_eval.json`, with `vibegravity eval golden` and `make eval` as the
   first quality regression gate.
 - `internal/eval` now also runs narrow graph replay scenarios through the real
   store-backed apply engine, checking `update_memory` retry idempotency,
@@ -101,7 +111,7 @@ Recently completed:
   reasoning succeeds, replay remains idempotent for memory/trace/edge rows, and
   unsupported deterministic apply work becomes blocked instead of retrying
   forever.
-- `cli jobs metrics [--window D] [--tenant ID] [--workspace ID]` now reports
+- `vibegravity jobs metrics [--window D] [--tenant ID] [--workspace ID]` now reports
   read-only operator backlog visibility: total queued, ready queued, running,
   failed, blocked, and complete counts, retryable queued attempts, oldest ready
   queued age, oldest running job age, drain rate, and recovery ETA when enough
@@ -111,8 +121,8 @@ Recently completed:
   edge, and prior-memory supersession inside one PostgreSQL transaction. The
   path locks and verifies the target as active/latest, rejects scope/owner
   boundary changes, and treats deterministic successful retries as idempotent.
-- Operator blocked-job recovery exists through `cli jobs blocked [--limit N]`
-  and `cli jobs requeue-blocked <job_id>`.
+- Operator blocked-job recovery exists through `vibegravity jobs blocked [--limit N]`
+  and `vibegravity jobs requeue-blocked <job_id> [--reason TEXT] [--dry-run] [--yes]`.
 - `internal/hermes.Provider` maps Hermes lifecycle hooks to core `Prefetch` and
   `SyncTurn`, renders typed recall context, exposes the minimum tool list, and
   has mocked lifecycle tests.
@@ -120,8 +130,8 @@ Recently completed:
   calls and has mocked tool delegation tests.
 - `internal/mcp.Server` serves `initialize`, `notifications/initialized`,
   `ping`, `tools/list`, and `tools/call` over newline-delimited MCP stdio JSON-RPC.
-- `cli mcp serve --stdio` starts the real MCP protocol server, and
-  `cli hermes bootstrap` prints the `hermes mcp add ... --args mcp serve --stdio`
+- `vibegravity mcp serve --stdio` starts the real MCP protocol server, and
+  `vibegravity hermes bootstrap` prints the `hermes mcp add ... --args mcp serve --stdio`
   registration plus `hermes mcp test` verification command.
 - `POST /v1/documents` now uses an atomic document+chunk store path.
 - `/healthz` returns `503` for a missing DB pool instead of panicking in embedded/test surfaces.
@@ -143,8 +153,8 @@ Recently completed:
 2. Build the 5-minute Hermes Memory demo: project rule, active plan, wrong
    memory, correction, supersession, explain/timeline, and private/shared scope
    check.
-3. Turn the printed Hermes MCP bootstrap into an install/package command once
-   the distribution format is decided.
+3. Turn the printed Hermes MCP bootstrap into an install/package command on top
+   of the Go binary-first packaging path.
 4. Add real Hermes runtime roundtrip tests against a configured local database.
 
 ## Done Gates

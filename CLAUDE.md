@@ -8,7 +8,7 @@ VibeGravity is a shared memory kernel for Hermes-first agent workflows.
 ## Hold these facts in every session
 
 - Hermes is the first customer
-- Language is Go (1.22+), database is PostgreSQL + pgvector
+- Language is Go 1.26.2 (match `go.mod`), database is PostgreSQL + pgvector
 - Migration tool is golang-migrate (see docs/adr-001)
 - Local runtime is embedding-only in v1 (no local LLM text extraction)
 - Worker pipeline: local embeddings → neighborhood retrieval → Codex stage 1 extract → Codex stage 2 resolve → apply engine

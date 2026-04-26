@@ -15,7 +15,7 @@ Keep agent_private, workspace_shared, and group_shared memory separate.
 
 ## Tech stack
 
-- Language: Go (1.22+)
+- Language: Go 1.26.2 (match `go.mod`)
 - Database: PostgreSQL (canonical store), SQLite (tests and lightweight local dev)
 - HTTP framework: net/http + chi router
 - Embedding runtime: local model server (HTTP endpoint, configurable)

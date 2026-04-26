@@ -1,15 +1,15 @@
 // ============================================================
 // FILE     : internal/kernel/doc.go
-// PURPOSE  : Provides package documentation for the concrete VibeGravity service composition.
+// PURPOSE  : Provides package documentation for the VibeGravity service facade.
 // LAYER    : application
-// STATUS   : draft
+// STATUS   : active
 // ------------------------------------------------------------
 // EXPORTS  : package kernel
-// DEPENDS  : internal/core, internal/ingest, internal/recall
-// USED_BY  : cmd/server, tests, future Hermes and MCP adapters
+// DEPENDS  : internal/core, internal/ingest, internal/recall, product service packages
+// USED_BY  : internal/runtime, tests, HTTP, Hermes, and MCP adapters
 // ------------------------------------------------------------
 // AGENT_NOTE: Keep this package as orchestration glue; product rules belong in the domain packages it composes.
 // ============================================================
 
-// Package kernel composes VibeGravity application services behind the core contract.
+// Package kernel exposes the VibeGravity service facade behind the core contract.
 package kernel

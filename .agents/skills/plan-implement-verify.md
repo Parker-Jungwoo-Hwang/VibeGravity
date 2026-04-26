@@ -13,13 +13,20 @@ Do not use it for trivial one-line edits.
 ## Steps
 
 1. Read the relevant contract docs from `plans/`.
-2. Write a short plan in PLANS.md or as a comment.
+2. Write a short plan in `PLANS.md`, a review packet, or the handoff when the
+   change is more than a trivial edit.
 3. Implement the smallest coherent slice.
 4. Run the relevant checks:
    - `go test ./...`
-   - `golangci-lint run`
-5. Review the diff against the contract (load `contract-check` skill if needed).
-6. Report changed files, commands, results, and risks.
+   - `make eval`
+   - `make lint`
+   - `make check-headers`
+   - `git diff --check`
+5. If live DB behavior changed, run `make integration-postgres` against a
+   migrated scratch database. If `VIBEGRAVITY_DB_URL` is unset and the target
+   skips, report that live PostgreSQL proof is still missing.
+6. Review the diff against the contract (load `contract-check` skill if needed).
+7. Report changed files, commands, results, and risks.
 
 ## Output format
 

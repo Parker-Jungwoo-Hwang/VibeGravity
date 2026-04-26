@@ -317,7 +317,7 @@ func TestRequeueBlockedJobRequiresBlockedStatus(t *testing.T) {
 
 	exec := &recordingJobExecutor{tag: pgconn.NewCommandTag("UPDATE 1")}
 
-	if err := requeueBlockedJob(context.Background(), exec, "job_blocked_1"); err != nil {
+	if err := requeueBlockedJob(context.Background(), exec, "job_blocked_1", "apply support landed"); err != nil {
 		t.Fatalf("requeueBlockedJob returned error: %v", err)
 	}
 
@@ -333,7 +333,10 @@ func TestRequeueBlockedJobRequiresBlockedStatus(t *testing.T) {
 	if strings.Contains(exec.sql, "interval '30 seconds'") {
 		t.Fatalf("manual requeue must not schedule retry interval, got: %s", exec.sql)
 	}
-	if len(exec.args) != 1 || exec.args[0] != "job_blocked_1" {
+	if !strings.Contains(exec.sql, "operator requeue reason") {
+		t.Fatalf("expected requeue reason to be preserved in last_error, got: %s", exec.sql)
+	}
+	if len(exec.args) != 2 || exec.args[0] != "job_blocked_1" || exec.args[1] != "apply support landed" {
 		t.Fatalf("unexpected requeue args: %#v", exec.args)
 	}
 }
@@ -343,7 +346,7 @@ func TestRequeueBlockedJobReturnsNotFoundWhenJobIsNotBlocked(t *testing.T) {
 
 	exec := &recordingJobExecutor{tag: pgconn.NewCommandTag("UPDATE 0")}
 
-	err := requeueBlockedJob(context.Background(), exec, "job_not_blocked")
+	err := requeueBlockedJob(context.Background(), exec, "job_not_blocked", "")
 	if !errors.Is(err, core.ErrNotFound) {
 		t.Fatalf("expected ErrNotFound, got %v", err)
 	}

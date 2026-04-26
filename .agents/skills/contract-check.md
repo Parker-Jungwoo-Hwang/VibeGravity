@@ -30,6 +30,28 @@ This skill checks whether the current implementation violates the documented pro
 - group_shared requires valid membership
 - Docs updated if behavior changed
 
+## Severity Template
+
+Use this severity scale when reporting findings:
+
+```text
+Severity: critical | high | medium | low
+Contract: product | runtime | storage | API | eval | docs
+Evidence: file path and line, command output, or scenario name
+Impact: what can break for Hermes Memory or operator trust
+Required fix: the smallest change needed before merge or handoff
+Live DB required: yes | no
+```
+
+- `critical`: breaks a core invariant, leaks scope, loses provenance, corrupts
+  correction/supersession, or makes a live trust-loop claim without PostgreSQL
+  proof.
+- `high`: likely product regression in recall, correction, explain/timeline,
+  worker retry, idempotency, or external protocol behavior.
+- `medium`: contract drift that should be fixed before the next work pack but
+  does not immediately corrupt memory state.
+- `low`: documentation, naming, or follow-up clarity issue.
+
 ## Output
 
 - critical breaks (blocks merge)
