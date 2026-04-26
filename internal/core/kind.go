@@ -5,7 +5,7 @@
 // STATUS   : active
 // ------------------------------------------------------------
 // EXPORTS  : MemoryKind, EdgeKind, MemoryStatus, JobKind, ArtifactClass
-// DEPENDS  : plans/02_product-contract_and_direction.md, docs/adr-005-artifact-class-timing.md
+// DEPENDS  : internal/core/memory.go, internal/core/job.go
 // USED_BY  : internal/core records, storage, reasoning/apply contracts
 // ------------------------------------------------------------
 // AGENT_NOTE: Treat value changes as contract changes and update docs/tests.

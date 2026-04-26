@@ -5,7 +5,7 @@
 // STATUS   : draft
 // ------------------------------------------------------------
 // EXPORTS  : package worker
-// DEPENDS  : docs/adr-008-package-layout.md, plans/05_runtime-contracts_ingest-recall-apply.md
+// DEPENDS  : internal/core, internal/reasoning, internal/graph
 // USED_BY  : cmd/worker, tests
 // ------------------------------------------------------------
 // AGENT_NOTE: This package orchestrates jobs; semantic extraction remains Codex-first through internal/reasoning.

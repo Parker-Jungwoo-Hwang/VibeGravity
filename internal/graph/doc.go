@@ -5,7 +5,7 @@
 // STATUS   : draft
 // ------------------------------------------------------------
 // EXPORTS  : package graph
-// DEPENDS  : plans/05_runtime-contracts_ingest-recall-apply.md
+// DEPENDS  : internal/core, internal/reasoning, internal/store
 // USED_BY  : worker pipeline, core service implementations
 // ------------------------------------------------------------
 // AGENT_NOTE: Validate structured reasoning output before writing memories, edges, traces, or profiles.

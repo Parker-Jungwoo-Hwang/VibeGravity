@@ -38,6 +38,25 @@
 .claude/settings.local.json
 .hermes/
 
+# Internal development, planning, and agent artifacts
+/.agents/
+/.github/
+/c-level-review/
+/consulting/
+/plans/
+/docs/review-packets/
+/docs/adr-*.md
+/docs/code-header-policy.md
+/docs/open-source-code-policy.md
+/docs/private-validation-backlog.md
+/docs/roadmap.md
+/docs/status.md
+/AGENTS.md
+/CLAUDE.md
+/PLANS.md
+/COMMIT_MESSAGE_RULES.md
+/.gitmessage.txt
+
 # Build and release artifacts
 bin/
 dist/

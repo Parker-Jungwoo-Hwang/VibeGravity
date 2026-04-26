@@ -5,7 +5,7 @@
 // STATUS   : draft
 // ------------------------------------------------------------
 // EXPORTS  : package reasoning
-// DEPENDS  : plans/03_target-architecture_codex-first.md, plans/05_runtime-contracts_ingest-recall-apply.md
+// DEPENDS  : internal/core, internal/graph, internal/worker
 // USED_BY  : worker pipeline, graph apply engine
 // ------------------------------------------------------------
 // AGENT_NOTE: Stage outputs must remain schema-first JSON and never bypass apply validation.

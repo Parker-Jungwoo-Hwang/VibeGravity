@@ -5,7 +5,7 @@
 // STATUS   : active
 // ------------------------------------------------------------
 // EXPORTS  : MemoryScope
-// DEPENDS  : plans/04_memory-scopes_dreaming_ontology-lite.md
+// DEPENDS  : internal/core/memory.go, internal/core/note.go, internal/core/plan.go
 // USED_BY  : every memory, note, plan, profile, and recall path
 // ------------------------------------------------------------
 // AGENT_NOTE: Scope must never be implicit or nullable in memory writes.

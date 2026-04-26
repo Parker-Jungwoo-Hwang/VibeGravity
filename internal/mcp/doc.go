@@ -5,7 +5,7 @@
 // STATUS   : draft
 // ------------------------------------------------------------
 // EXPORTS  : package mcp
-// DEPENDS  : plans/10_workpack_hermes-provider-and-external-surfaces.md
+// DEPENDS  : README.md, docs/packaging.md
 // USED_BY  : MCP clients, operator tools, coding agent integrations
 // ------------------------------------------------------------
 // AGENT_NOTE: MCP tools must call the same core semantics used by Hermes and HTTP.

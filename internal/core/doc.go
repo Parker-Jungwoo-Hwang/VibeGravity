@@ -5,7 +5,7 @@
 // STATUS   : active
 // ------------------------------------------------------------
 // EXPORTS  : package core
-// DEPENDS  : plans/02_product-contract_and_direction.md
+// DEPENDS  : README.md, internal/core service contracts
 // USED_BY  : Go documentation, internal/core
 // ------------------------------------------------------------
 // AGENT_NOTE: Keep this package summary aligned with the product contract.

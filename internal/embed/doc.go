@@ -5,7 +5,7 @@
 // STATUS   : draft
 // ------------------------------------------------------------
 // EXPORTS  : package embed
-// DEPENDS  : plans/03_target-architecture_codex-first.md
+// DEPENDS  : README.md, docs/packaging.md
 // USED_BY  : future embedding client implementation
 // ------------------------------------------------------------
 // AGENT_NOTE: Keep local runtime embedding-focused; do not add a local extractor here.

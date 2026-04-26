@@ -55,7 +55,6 @@ Each release candidate must update or review:
 - `docs/release-notes-template.md`
 - `docs/rollback-guide.md`
 - `docs/migration-rollback-matrix.md`
-- `docs/status.md`
 - `docs/live-postgres-proof.md`
 - `docs/hermes-mcp-proof.md`
 

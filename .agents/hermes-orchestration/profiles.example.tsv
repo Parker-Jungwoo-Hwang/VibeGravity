@@ -1,5 +1,0 @@
-# profile	HERMES_HOME
-# Copy to profiles.tsv for local profile-specific paths, or set HERMES_PROFILE_MANIFEST.
-default	$HOME/.hermes
-vuitton	$HOME/.hermes/profiles/vuitton
-bottega	$HOME/.hermes/profiles/bottega
