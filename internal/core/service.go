@@ -8,7 +8,7 @@
 // DEPENDS  : context, internal/core/dto.go
 // USED_BY  : HTTP API, MCP, Hermes provider, tests
 // ------------------------------------------------------------
-// AGENT_NOTE: Do not change this interface without updating AGENTS.md and runtime docs.
+// AGENT_NOTE: Do not change this interface without updating public runtime docs and tests.
 // ============================================================
 
 package core

@@ -1,3 +1,0 @@
-default	.agents/hermes-orchestration/tasks/v1-update-memory/default.md
-vuitton	.agents/hermes-orchestration/tasks/v1-update-memory/vuitton.md
-bottega	.agents/hermes-orchestration/tasks/v1-update-memory/bottega.md

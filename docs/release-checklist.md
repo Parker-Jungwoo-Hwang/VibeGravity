@@ -79,7 +79,7 @@ TBD
 - [ ] `SECURITY.md` has a private reporting path or caveat.
 - [ ] `SUPPORT.md` sets support boundaries.
 - [ ] `CODE_OF_CONDUCT.md` is present if accepting public contributions.
-- [ ] `docs/status.md` does not overclaim readiness.
+- [ ] `README.md` and `CHANGELOG.md` do not overclaim readiness.
 - [ ] `docs/privacy-and-data-handling.md` reflects data handling and current
       limitations.
 - [ ] `docs/live-postgres-proof.md` is updated for the release candidate.
@@ -128,12 +128,12 @@ TBD
 - [ ] Create annotated tag with
       `git tag -a v0.x.y -F dist/release-note-v0.x.y.md`.
 - [ ] Push tag.
-- [ ] Update `docs/status.md` after the release.
+- [ ] Update `README.md` and `CHANGELOG.md` after the release.
 
 ## Source Review
 
-Estimated source: current `PLANS.md`, `docs/status.md`,
-`docs/privacy-and-data-handling.md`, existing release-checklist draft, and local
+Estimated source: current `README.md`, `CHANGELOG.md`,
+`docs/privacy-and-data-handling.md`, this release checklist, and local
 verification commands.
 
 Suspected license: none.

@@ -5,7 +5,7 @@
 // STATUS   : active
 // ------------------------------------------------------------
 // EXPORTS  : PrefetchRequest, SyncTurnRequest, search/note/plan/memory DTOs
-// DEPENDS  : encoding/json, time, plans/05_runtime-contracts_ingest-recall-apply.md
+// DEPENDS  : encoding/json, time, internal/core domain types
 // USED_BY  : internal/core/service.go, internal/httpapi, tests
 // ------------------------------------------------------------
 // AGENT_NOTE: Keep DTO changes synchronized with runtime contract docs.

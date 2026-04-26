@@ -5,7 +5,7 @@
 // STATUS   : draft
 // ------------------------------------------------------------
 // EXPORTS  : package ingest
-// DEPENDS  : plans/05_runtime-contracts_ingest-recall-apply.md
+// DEPENDS  : internal/core, internal/store
 // USED_BY  : core service implementations, HTTP API, Hermes adapter
 // ------------------------------------------------------------
 // AGENT_NOTE: Keep sync_turn fast: normalize, validate, dedupe, insert raw events, enqueue jobs, ack.

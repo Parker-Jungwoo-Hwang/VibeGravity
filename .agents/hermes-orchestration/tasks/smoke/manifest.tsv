@@ -1,3 +1,0 @@
-default	.agents/hermes-orchestration/tasks/smoke/default.md
-vuitton	.agents/hermes-orchestration/tasks/smoke/vuitton.md
-bottega	.agents/hermes-orchestration/tasks/smoke/bottega.md

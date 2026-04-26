@@ -7,18 +7,17 @@ honest degraded recall.
 
 ## Start Here
 
-Before changing product, runtime, storage, or protocol behavior, read:
+Before changing product, runtime, storage, or protocol behavior, read the
+public operator-facing docs:
 
-1. `AGENTS.md`
-2. `PLANS.md`
-3. `plans/00_read-this-first_for-building-agents.md`
-4. `plans/01_rfp_vibegravity_hermes-first.md`
-5. `plans/02_product-contract_and_direction.md`
-6. `plans/03_target-architecture_codex-first.md`
-7. `plans/05_runtime-contracts_ingest-recall-apply.md`
-8. `plans/06_data-model_and_storage-invariants.md`
+1. `README.md`
+2. `docs/privacy-and-data-handling.md`
+3. `docs/packaging.md`
+4. `docs/demo.md`
+5. `tests/README.md`
 
-For verification expectations, read `tests/README.md`.
+Internal planning, agent coordination notes, and review packets are intentionally
+not part of the public source distribution.
 
 ## Product Boundaries
 
@@ -42,13 +41,13 @@ the issue.
 For code changes:
 
 1. Update or add tests near the behavior.
-2. Keep Go file headers compliant with the repo policy.
-3. Update docs or review packets when behavior changes.
+2. Keep Go file headers consistent with neighboring files.
+3. Update public docs when behavior changes.
 4. Run the local deterministic gate.
 5. Report remaining risks honestly.
 
-If multiple agents are working in parallel, follow `.agents/coordination/README.md`
-and claim exact files before editing.
+Keep changes focused on the user-visible program, runtime behavior, tests, or
+public documentation.
 
 ## Verification
 
@@ -109,18 +108,5 @@ Source Review:
 
 ## Commit Messages
 
-Use the repo commit style from `COMMIT_MESSAGE_RULES.md`:
-
-```text
-[scope] [subscope] Imperative summary
-```
-
-Examples:
-
-```text
-[docs] Add contribution guide
-[mcp] Validate trust-loop tool schemas
-[worker] Block unsupported deterministic apply jobs
-```
-
-Keep one commit focused on one logical change.
+Use short imperative commit messages and keep one commit focused on one logical
+change.

@@ -5,7 +5,7 @@
 // STATUS   : active
 // ------------------------------------------------------------
 // EXPORTS  : package runtime
-// DEPENDS  : plans/03_target-architecture_codex-first.md
+// DEPENDS  : README.md, docs/packaging.md
 // USED_BY  : cmd/server, cmd/worker, cmd/cli, cmd/vibegravity
 // ------------------------------------------------------------
 // AGENT_NOTE: Keep process wiring here so command packages stay thin.

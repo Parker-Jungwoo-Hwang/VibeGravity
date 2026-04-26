@@ -5,7 +5,7 @@
 // STATUS   : draft
 // ------------------------------------------------------------
 // EXPORTS  : package recall
-// DEPENDS  : plans/05_runtime-contracts_ingest-recall-apply.md
+// DEPENDS  : internal/core, internal/store
 // USED_BY  : core service implementations, HTTP API, Hermes adapter, MCP tools
 // ------------------------------------------------------------
 // AGENT_NOTE: Build typed blocks before rendering and keep recall scope-aware and budget-aware.

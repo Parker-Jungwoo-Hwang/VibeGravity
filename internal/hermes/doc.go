@@ -5,7 +5,7 @@
 // STATUS   : draft
 // ------------------------------------------------------------
 // EXPORTS  : package hermes
-// DEPENDS  : plans/10_workpack_hermes-provider-and-external-surfaces.md
+// DEPENDS  : README.md, docs/packaging.md
 // USED_BY  : Hermes provider integration, tests
 // ------------------------------------------------------------
 // AGENT_NOTE: Hermes is the first customer; adapter behavior must not fork core semantics.
